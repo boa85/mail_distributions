@@ -2,5 +2,15 @@ cmake_minimum_required(VERSION 3.13)
 project(mail_distribution)
 
 set(CMAKE_CXX_STANDARD 14)
-
-add_executable(mail_distribution main.cpp)
+set(CMAKE_CXX_FLAGS "-O0 -pedantic-errors -Wextra -Wall -Winit-self -Wold-style-cast -Woverloaded-virtual -Wuninitialized -Wmissing-declarations -Wno-ignored-qualifiers -Wno-unused-parameter")
+find_package(Boost 1.58.0 COMPONENTS system filesystem program_options signals)
+if (NOT Boost_FOUND)
+    message(FATAL_ERROR "Could not find boost!")
+endif ()
+find_package(PostgreSQL REQUIRED)
+include_directories(${BOOST_INCLUDE_DIRS}  ${PostgreSQL_INCLUDE_DIRS} )
+SET(CMAKE_CXX_FLAGS -pthread)
+set(SOURCE_FILES
+        main.cpp tools/database/pg_backend.cpp tools/database/pg_backend.hpp tools/database/pg_connection.cpp tools/database/pg_connection.hpp)
+add_executable(mail_distribution ${SOURCE_FILES} main.cpp)
+target_link_libraries(mail_distribution  ${Boost_LIBRARIES}  ${PostgreSQL_LIBRARIES})
