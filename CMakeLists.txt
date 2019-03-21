@@ -11,6 +11,6 @@ find_package(PostgreSQL REQUIRED)
 include_directories(${BOOST_INCLUDE_DIRS}  ${PostgreSQL_INCLUDE_DIRS} )
 SET(CMAKE_CXX_FLAGS -pthread)
 set(SOURCE_FILES
-        main.cpp tools/database/pg_backend.cpp tools/database/pg_backend.hpp tools/database/pg_connection.cpp tools/database/pg_connection.hpp)
+        main.cpp tools/database/pg_backend.cpp tools/database/pg_backend.hpp tools/database/pg_connection.cpp tools/database/pg_connection.hpp core/smtp_server.cpp core/smtp_server.hpp core/base_64.cpp core/base_64.hpp)
 add_executable(mail_distribution ${SOURCE_FILES} main.cpp)
 target_link_libraries(mail_distribution  ${Boost_LIBRARIES}  ${PostgreSQL_LIBRARIES})
