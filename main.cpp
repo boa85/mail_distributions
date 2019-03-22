@@ -1,9 +1,9 @@
 #include <thread>
 #include <iostream>
 #include "tools/database/pg_backend.hpp"
-
+#include "core/smtp_server.hpp"
 using namespace md::db;
-
+using namespace md::smtp;
 void testConnection(const std::shared_ptr<PGBackend> &pgBackend)
 {
     auto conn = pgBackend->connection();
@@ -28,11 +28,53 @@ void testConnection(const std::shared_ptr<PGBackend> &pgBackend)
 
 }
 
+void sendMail()
+{
+    bool bError = false;
+
+    try
+    {
+        CSmtp mail;
+
+        mail.set_smtp_server("smtp.domain.com", 25);
+        mail.set_login("***");
+        mail.set_password("***");
+        mail.set_sender_name("User");
+        mail.set_sender_mail("user@domain.com");
+        mail.set_reply_to("user@domain.com");
+        mail.set_subject("The message");
+        mail.add_recipient("friend@domain2.com");
+        mail.set_xpriority(XPRIORITY_NORMAL);
+        mail.set_xmailer("The Bat! (v3.02) Professional");
+        mail.add_msg_line("Hello,");
+        mail.add_msg_line("");
+        mail.add_msg_line("...");
+        mail.add_msg_line("How are you today?");
+        mail.add_msg_line("");
+        mail.add_msg_line("Regards");
+//        mail.modMsgLine(5, "regards");
+//        mail.delMsgLine(2);
+//        mail.addMsgLine("User");
+
+        //mail.addAttachment("../test1.jpg");
+        //mail.addAttachment("c:\\test2.exe");
+        //mail.addAttachment("c:\\test3.txt");
+        mail.send_mail();
+    }
+    catch(ECSmtp e)
+    {
+        std::cout << "Error: " << e.get_error_message().c_str() << ".\n";
+        bError = true;
+    }
+    if(!bError)
+        std::cout << "m_mail was send_mail successfully.\n";
+
+}
 
 int main(int argc, char const *argv[])
 {
     try {
-        auto pgbackend = std::make_shared<PGBackend>();
+        /*auto pgbackend = std::make_shared<PGBackend>();
 
 
         std::vector<std::shared_ptr<std::thread>> vec;
@@ -44,8 +86,9 @@ int main(int argc, char const *argv[])
 
         for (auto &i : vec) {
             i.get()->join();
-        }
+        }*/
 
+        sendMail();
 
         return 0;
     }

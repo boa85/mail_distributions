@@ -16,25 +16,26 @@
 #include <errno.h>
 #include <stdio.h>
 #include <iostream>
+
 #define SOCKET_ERROR -1
 #define INVALID_SOCKET -1
 
 typedef unsigned short WORD;
 typedef int SOCKET;
 typedef struct sockaddr_in SOCKADDR_IN;
-typedef struct hostent* LPHOSTENT;
-typedef struct servent* LPSERVENT;
-typedef struct in_addr* LPIN_ADDR;
-typedef struct sockaddr* LPSOCKADDR;
+typedef struct hostent *LPHOSTENT;
+typedef struct servent *LPSERVENT;
+typedef struct in_addr *LPIN_ADDR;
+typedef struct sockaddr *LPSOCKADDR;
 
 namespace md
 {
     namespace smtp
     {
-#define TIME_IN_SEC		10		// how long client will wait for server response in non-blocking mode
-#define BUFFER_SIZE 10240	  // SendData and RecvData buffers sizes
-#define MSG_SIZE_IN_MB 5		// the maximum size of the message with all attachments
-#define COUNTER_VALUE	100		// how many times program will try to receive data
+#define TIME_IN_SEC        10        // how long client will wait for server response in non-blocking mode
+#define BUFFER_SIZE 10240      // send_data and RecvData buffers sizes
+#define MSG_SIZE_IN_MB 5        // the maximum size of the message with all attachments
+#define COUNTER_VALUE    100        // how many times program will try to receive data
 
         const char BOUNDARY_TEXT[] = "__MESSAGE__ID__54yg6f6h6y456345";
 
@@ -90,90 +91,140 @@ namespace md
                 SENDBUF_IS_EMPTY,
                 OUT_OF_MSG_RANGE,
             };
-            ECSmtp(CSmtpError err_) : ErrorCode(err_) {}
-            CSmtpError GetErrorNum(void) const {return ErrorCode;}
-            std::string GetErrorText(void) const;
+
+            explicit ECSmtp(CSmtpError smtp_error)
+                    : m_error_code(smtp_error)
+            {
+
+            }
+
+            CSmtpError get_error_code() const
+            {
+                return m_error_code;
+            }
+
+            std::string get_error_message() const;
 
         private:
-            CSmtpError ErrorCode;
+            CSmtpError m_error_code;
         };
 
         class CSmtp
         {
         public:
             CSmtp();
+
             virtual ~CSmtp();
-            void AddRecipient(const char *email, const char *name=NULL);
-            void AddBCCRecipient(const char *email, const char *name=NULL);
-            void AddCCRecipient(const char *email, const char *name=NULL);
-            void AddAttachment(const char *path);
-            void AddMsgLine(const char* text);
-            void DelRecipients(void);
-            void DelBCCRecipients(void);
-            void DelCCRecipients(void);
-            void DelAttachments(void);
-            void DelMsgLines(void);
-            void DelMsgLine(unsigned int line);
-            void ModMsgLine(unsigned int line,const char* text);
-            unsigned int GetBCCRecipientCount() const;
-            unsigned int GetCCRecipientCount() const;
-            unsigned int GetRecipientCount() const;
-            const char* GetLocalHostIP() const;
-            const char* GetLocalHostName() const;
-            const char* GetMsgLineText(unsigned int line) const;
-            unsigned int GetMsgLines(void) const;
-            const char* GetReplyTo() const;
-            const char* GetMailFrom() const;
-            const char* GetSenderName() const;
-            const char* GetSubject() const;
-            const char* GetXMailer() const;
-            CSmptXPriority GetXPriority() const;
-            void Send();
-            void SetSubject(const char*);
-            void SetSenderName(const char*);
-            void SetSenderMail(const char*);
-            void SetReplyTo(const char*);
-            void SetXMailer(const char*);
-            void SetLogin(const char*);
-            void SetPassword(const char*);
-            void SetXPriority(CSmptXPriority);
-            void SetSMTPServer(const char* server,const unsigned short port=0);
+
+            void add_recipient(const char *email, const char *name = nullptr);
+
+            void add_BCC_recipient(const char *email, const char *name = nullptr);
+
+            void add_CC_recipient(const char *email, const char *name = nullptr);
+
+            void add_attachment(const char *path);
+
+            void add_msg_line(const char *text);
+
+            void delete_recipients();
+
+            void delete_BCC_recipients();
+
+            void delete_CC_recipients();
+
+            void delete_attachments();
+
+            void delete_message_lines();
+
+            void delete_message_line(unsigned int line_number);
+
+            void modify_message_line(unsigned int line_number, const char *text);
+
+            unsigned int get_BCC_recipient_count() const;
+
+            unsigned int get_CC_recipient_count() const;
+
+            unsigned int get_recipient_count() const;
+
+            const char *GetLocalHostIP() const;
+
+            const char *get_local_hostname() const;
+
+            const char *get_message_line_text(unsigned int line_number) const;
+
+            unsigned int get_line_count() const;
+
+            const char *get_reply_to() const;
+
+            const char *get_mail_from() const;
+
+            const char *get_sender_name() const;
+
+            const char *get_subject() const;
+
+            const char *get_xmailer() const;
+
+            CSmptXPriority get_xpriority() const;
+
+            void send_mail();
+
+            void set_subject(const char *);
+
+            void set_sender_name(const char *);
+
+            void set_sender_mail(const char *);
+
+            void set_reply_to(const char *);
+
+            void set_xmailer(const char *);
+
+            void set_login(const char *);
+
+            void set_password(const char *);
+
+            void set_xpriority(CSmptXPriority);
+
+            void set_smtp_server(const char *server, const unsigned short port = 0);
 
         private:
-            std::string m_sLocalHostName;
-            std::string m_sMailFrom;
-            std::string m_sNameFrom;
-            std::string m_sSubject;
-            std::string m_sXMailer;
-            std::string m_sReplyTo;
-            std::string m_sIPAddr;
-            std::string m_sLogin;
-            std::string m_sPassword;
-            std::string m_sSMTPSrvName;
-            unsigned short m_iSMTPSrvPort;
-            CSmptXPriority m_iXPriority;
-            char *SendBuf;
-            char *RecvBuf;
+            std::string m_local_hostname;
+            std::string m_mail_from;
+            std::string m_name_from;
+            std::string m_subject;
+            std::string m_mailer;
+            std::string m_reply_to;
+            std::string m_ip_address;
+            std::string m_login;
+            std::string m_password;
+            std::string m_smtp_server_name;
+            unsigned short m_smtp_server_port;
+            CSmptXPriority m_xPriority;
+            char *send_buffer;
+            char *m_receive_buffer;
 
-            SOCKET hSocket;
+            SOCKET m_socket;
 
             struct Recipient
             {
-                std::string Name;
-                std::string Mail;
+                std::string m_name;
+                std::string m_mail;
             };
 
-            std::vector<Recipient> Recipients;
-            std::vector<Recipient> CCRecipients;
-            std::vector<Recipient> BCCRecipients;
-            std::vector<std::string> Attachments;
-            std::vector<std::string> MsgBody;
+            std::vector<Recipient> m_recipients;
+            std::vector<Recipient> m_cc_recipients;
+            std::vector<Recipient> m_bcc_recipients;
+            std::vector<std::string> m_attachments;
+            std::vector<std::string> m_message_body;
 
-            void ReceiveData();
-            void SendData();
-            void FormatHeader(char*);
-            int SmtpXYZdigits();
-            SOCKET ConnectRemoteServer(const char* server, const unsigned short port=0);
+            void receive_data();
+
+            void send_data();
+
+            void format_header(char *);
+
+            int smtp_xyz_digits();
+
+            SOCKET connect_remote_server(const char *server, const unsigned short port = 0);
 
         };
 

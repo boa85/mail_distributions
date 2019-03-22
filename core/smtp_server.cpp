@@ -9,127 +9,127 @@ namespace md
     {
         CSmtp::CSmtp()
         {
-            m_iXPriority = XPRIORITY_NORMAL;
-            m_iSMTPSrvPort = 0;
+            m_xPriority = XPRIORITY_NORMAL;
+            m_smtp_server_port = 0;
 
 
-            if((RecvBuf = new char[BUFFER_SIZE]) == NULL)
+            if((m_receive_buffer = new char[BUFFER_SIZE]) == NULL)
                 throw ECSmtp(ECSmtp::LACK_OF_MEMORY);
 
-            if((SendBuf = new char[BUFFER_SIZE]) == NULL)
+            if((send_buffer = new char[BUFFER_SIZE]) == NULL)
                 throw ECSmtp(ECSmtp::LACK_OF_MEMORY);
         }
 
         CSmtp::~CSmtp()
         {
-            if(SendBuf)
+            if(send_buffer)
             {
-                delete[] SendBuf;
-                SendBuf = NULL;
+                delete[] send_buffer;
+                send_buffer = NULL;
             }
-            if(RecvBuf)
+            if(m_receive_buffer)
             {
-                delete[] RecvBuf;
-                RecvBuf = NULL;
+                delete[] m_receive_buffer;
+                m_receive_buffer = NULL;
             }
 
         }
 
-        void CSmtp::AddAttachment(const char *Path)
+        void CSmtp::add_attachment(const char *path)
         {
-            assert(Path);
-            Attachments.insert(Attachments.end(),Path);
+            assert(path);
+            m_attachments.insert(m_attachments.end(),path);
         }
 
-        void CSmtp::AddRecipient(const char *email, const char *name)
+        void CSmtp::add_recipient(const char *email, const char *name)
         {
             if(!email)
                 throw ECSmtp(ECSmtp::UNDEF_RECIPIENT_MAIL);
 
             Recipient recipient;
-            recipient.Mail.insert(0,email);
-            name!=NULL ? recipient.Name.insert(0,name) : recipient.Name.insert(0,"");
+            recipient.m_mail.insert(0,email);
+            name!=NULL ? recipient.m_name.insert(0,name) : recipient.m_name.insert(0,"");
 
-            Recipients.insert(Recipients.end(), recipient);
+            m_recipients.insert(m_recipients.end(), recipient);
         }
 
-        void CSmtp::AddCCRecipient(const char *email, const char *name)
+        void CSmtp::add_CC_recipient(const char *email, const char *name)
         {
             if(!email)
                 throw ECSmtp(ECSmtp::UNDEF_RECIPIENT_MAIL);
 
             Recipient recipient;
-            recipient.Mail.insert(0,email);
-            name!=NULL ? recipient.Name.insert(0,name) : recipient.Name.insert(0,"");
+            recipient.m_mail.insert(0,email);
+            name!=NULL ? recipient.m_name.insert(0,name) : recipient.m_name.insert(0,"");
 
-            CCRecipients.insert(CCRecipients.end(), recipient);
+            m_cc_recipients.insert(m_cc_recipients.end(), recipient);
         }
 
 
-        void CSmtp::AddBCCRecipient(const char *email, const char *name)
+        void CSmtp::add_BCC_recipient(const char *email, const char *name)
         {
             if(!email)
                 throw ECSmtp(ECSmtp::UNDEF_RECIPIENT_MAIL);
 
             Recipient recipient;
-            recipient.Mail.insert(0,email);
-            name!=NULL ? recipient.Name.insert(0,name) : recipient.Name.insert(0,"");
+            recipient.m_mail.insert(0,email);
+            name!=NULL ? recipient.m_name.insert(0,name) : recipient.m_name.insert(0,"");
 
-            BCCRecipients.insert(BCCRecipients.end(), recipient);
+            m_bcc_recipients.insert(m_bcc_recipients.end(), recipient);
         }
 
 
-        void CSmtp::AddMsgLine(const char* Text)
+        void CSmtp::add_msg_line(const char *text)
         {
-            MsgBody.insert(MsgBody.end(),Text);
+            m_message_body.insert(m_message_body.end(),text);
         }
 
 
-        void CSmtp::DelMsgLine(unsigned int Line)
+        void CSmtp::delete_message_line(unsigned int line_number)
         {
-            if(Line > MsgBody.size())
+            if(line_number > m_message_body.size())
                 throw ECSmtp(ECSmtp::OUT_OF_MSG_RANGE);
-            MsgBody.erase(MsgBody.begin()+Line);
+            m_message_body.erase(m_message_body.begin()+line_number);
         }
 
 
-        void CSmtp::DelRecipients()
+        void CSmtp::delete_recipients()
         {
-            Recipients.clear();
+            m_recipients.clear();
         }
 
 
-        void CSmtp::DelBCCRecipients()
+        void CSmtp::delete_BCC_recipients()
         {
-            BCCRecipients.clear();
+            m_bcc_recipients.clear();
         }
 
-        void CSmtp::DelCCRecipients()
+        void CSmtp::delete_CC_recipients()
         {
-            CCRecipients.clear();
+            m_cc_recipients.clear();
         }
 
-        void CSmtp::DelMsgLines()
+        void CSmtp::delete_message_lines()
         {
-            MsgBody.clear();
+            m_message_body.clear();
         }
 
-        void CSmtp::DelAttachments()
+        void CSmtp::delete_attachments()
         {
-            Attachments.clear();
+            m_attachments.clear();
         }
 
-        void CSmtp::ModMsgLine(unsigned int Line,const char* Text)
+        void CSmtp::modify_message_line(unsigned int line_number, const char *text)
         {
-            if(Text)
+            if(text)
             {
-                if(Line > MsgBody.size())
+                if(line_number > m_message_body.size())
                     throw ECSmtp(ECSmtp::OUT_OF_MSG_RANGE);
-                MsgBody.at(Line) = std::string(Text);
+                m_message_body.at(line_number) = std::string(text);
             }
         }
 
-        void CSmtp::Send()
+        void CSmtp::send_mail()
         {
             unsigned int i,rcpt_count,res,FileId;
             char *FileBuf = NULL, *FileName = NULL;
@@ -140,14 +140,14 @@ namespace md
             // ***** CONNECTING TO SMTP SERVER *****
 
             // connecting to remote host:
-            if( (hSocket = ConnectRemoteServer(m_sSMTPSrvName.c_str(), m_iSMTPSrvPort)) == INVALID_SOCKET )
+            if( (m_socket = connect_remote_server(m_smtp_server_name.c_str(), m_smtp_server_port)) == INVALID_SOCKET )
                 throw ECSmtp(ECSmtp::WSA_INVALID_SOCKET);
 
             bAccepted = false;
             do
             {
-                ReceiveData();
-                switch(SmtpXYZdigits())
+                receive_data();
+                switch(smtp_xyz_digits())
                 {
                     case 220:
                         bAccepted = true;
@@ -158,13 +158,13 @@ namespace md
             }while(!bAccepted);
 
             // EHLO <SP> <domain> <CRLF>
-            sprintf(SendBuf,"EHLO %s\r\n",GetLocalHostName()!=NULL ? m_sLocalHostName.c_str() : "domain");
-            SendData();
+            sprintf(send_buffer,"EHLO %s\r\n", get_local_hostname()!=NULL ? m_local_hostname.c_str() : "domain");
+            send_data();
             bAccepted = false;
             do
             {
-                ReceiveData();
-                switch(SmtpXYZdigits())
+                receive_data();
+                switch(smtp_xyz_digits())
                 {
                     case 250:
                         bAccepted = true;
@@ -175,13 +175,13 @@ namespace md
             }while(!bAccepted);
 
             // AUTH <SP> LOGIN <CRLF>
-            strcpy(SendBuf,"AUTH LOGIN\r\n");
-            SendData();
+            strcpy(send_buffer,"AUTH LOGIN\r\n");
+            send_data();
             bAccepted = false;
             do
             {
-                ReceiveData();
-                switch(SmtpXYZdigits())
+                receive_data();
+                switch(smtp_xyz_digits())
                 {
                     case 250:
                         break;
@@ -194,16 +194,16 @@ namespace md
             }while(!bAccepted);
 
             // send login:
-            if(!m_sLogin.size())
+            if(!m_login.size())
                 throw ECSmtp(ECSmtp::UNDEF_LOGIN);
-            std::string encoded_login = base64_encode(reinterpret_cast<const unsigned char*>(m_sLogin.c_str()),m_sLogin.size());
-            sprintf(SendBuf,"%s\r\n",encoded_login.c_str());
-            SendData();
+            std::string encoded_login = base64_encode(reinterpret_cast<const unsigned char*>(m_login.c_str()),m_login.size());
+            sprintf(send_buffer,"%s\r\n",encoded_login.c_str());
+            send_data();
             bAccepted = false;
             do
             {
-                ReceiveData();
-                switch(SmtpXYZdigits())
+                receive_data();
+                switch(smtp_xyz_digits())
                 {
                     case 334:
                         bAccepted = true;
@@ -214,16 +214,16 @@ namespace md
             }while(!bAccepted);
 
             // send password:
-            if(!m_sPassword.size())
+            if(!m_password.size())
                 throw ECSmtp(ECSmtp::UNDEF_PASSWORD);
-            std::string encoded_password = base64_encode(reinterpret_cast<const unsigned char*>(m_sPassword.c_str()),m_sPassword.size());
-            sprintf(SendBuf,"%s\r\n",encoded_password.c_str());
-            SendData();
+            std::string encoded_password = base64_encode(reinterpret_cast<const unsigned char*>(m_password.c_str()),m_password.size());
+            sprintf(send_buffer,"%s\r\n",encoded_password.c_str());
+            send_data();
             bAccepted = false;
             do
             {
-                ReceiveData();
-                switch(SmtpXYZdigits())
+                receive_data();
+                switch(smtp_xyz_digits())
                 {
                     case 235:
                         bAccepted = true;
@@ -240,15 +240,15 @@ namespace md
             // ***** SENDING E-MAIL *****
 
             // MAIL <SP> FROM:<reverse-path> <CRLF>
-            if(!m_sMailFrom.size())
+            if(!m_mail_from.size())
                 throw ECSmtp(ECSmtp::UNDEF_MAIL_FROM);
-            sprintf(SendBuf,"MAIL FROM:<%s>\r\n",m_sMailFrom.c_str());
-            SendData();
+            sprintf(send_buffer,"MAIL FROM:<%s>\r\n",m_mail_from.c_str());
+            send_data();
             bAccepted = false;
             do
             {
-                ReceiveData();
-                switch(SmtpXYZdigits())
+                receive_data();
+                switch(smtp_xyz_digits())
                 {
                     case 250:
                         bAccepted = true;
@@ -259,17 +259,17 @@ namespace md
             }while(!bAccepted);
 
             // RCPT <SP> TO:<forward-path> <CRLF>
-            if(!(rcpt_count = Recipients.size()))
+            if(!(rcpt_count = m_recipients.size()))
                 throw ECSmtp(ECSmtp::UNDEF_RECIPIENTS);
-            for(i=0;i<Recipients.size();i++)
+            for(i=0;i<m_recipients.size();i++)
             {
-                sprintf(SendBuf,"RCPT TO:<%s>\r\n",(Recipients.at(i).Mail).c_str());
-                SendData();
+                sprintf(send_buffer,"RCPT TO:<%s>\r\n",(m_recipients.at(i).m_mail).c_str());
+                send_data();
                 bAccepted = false;
                 do
                 {
-                    ReceiveData();
-                    switch(SmtpXYZdigits())
+                    receive_data();
+                    switch(smtp_xyz_digits())
                     {
                         case 250:
                             bAccepted = true;
@@ -282,15 +282,15 @@ namespace md
             if(rcpt_count <= 0)
                 throw ECSmtp(ECSmtp::COMMAND_RCPT_TO);
 
-            for(i=0;i<CCRecipients.size();i++)
+            for(i=0;i<m_cc_recipients.size();i++)
             {
-                sprintf(SendBuf,"RCPT TO:<%s>\r\n",(CCRecipients.at(i).Mail).c_str());
-                SendData();
+                sprintf(send_buffer,"RCPT TO:<%s>\r\n",(m_cc_recipients.at(i).m_mail).c_str());
+                send_data();
                 bAccepted = false;
                 do
                 {
-                    ReceiveData();
-                    switch(SmtpXYZdigits())
+                    receive_data();
+                    switch(smtp_xyz_digits())
                     {
                         case 250:
                             bAccepted = true;
@@ -301,15 +301,15 @@ namespace md
                 }while(!bAccepted);
             }
 
-            for(i=0;i<BCCRecipients.size();i++)
+            for(i=0;i<m_bcc_recipients.size();i++)
             {
-                sprintf(SendBuf,"RCPT TO:<%s>\r\n",(BCCRecipients.at(i).Mail).c_str());
-                SendData();
+                sprintf(send_buffer,"RCPT TO:<%s>\r\n",(m_bcc_recipients.at(i).m_mail).c_str());
+                send_data();
                 bAccepted = false;
                 do
                 {
-                    ReceiveData();
-                    switch(SmtpXYZdigits())
+                    receive_data();
+                    switch(smtp_xyz_digits())
                     {
                         case 250:
                             bAccepted = true;
@@ -321,13 +321,13 @@ namespace md
             }
 
             // DATA <CRLF>
-            strcpy(SendBuf,"DATA\r\n");
-            SendData();
+            strcpy(send_buffer,"DATA\r\n");
+            send_data();
             bAccepted = false;
             do
             {
-                ReceiveData();
-                switch(SmtpXYZdigits())
+                receive_data();
+                switch(smtp_xyz_digits())
                 {
                     case 354:
                         bAccepted = true;
@@ -340,22 +340,22 @@ namespace md
             }while(!bAccepted);
 
             // send header(s)
-            FormatHeader(SendBuf);
-            SendData();
+            format_header(send_buffer);
+            send_data();
 
             // send text message
-            if(GetMsgLines())
+            if(get_line_count())
             {
-                for(i=0;i<GetMsgLines();i++)
+                for(i=0;i< get_line_count();i++)
                 {
-                    sprintf(SendBuf,"%s\r\n",GetMsgLineText(i));
-                    SendData();
+                    sprintf(send_buffer,"%s\r\n", get_message_line_text(i));
+                    send_data();
                 }
             }
             else
             {
-                sprintf(SendBuf,"%s\r\n"," ");
-                SendData();
+                sprintf(send_buffer,"%s\r\n"," ");
+                send_data();
             }
 
             // next goes attachments (if they are)
@@ -366,21 +366,21 @@ namespace md
                 throw ECSmtp(ECSmtp::LACK_OF_MEMORY);
 
             TotalSize = 0;
-            for(FileId=0;FileId<Attachments.size();FileId++)
+            for(FileId=0;FileId<m_attachments.size();FileId++)
             {
-                strcpy(FileName,Attachments[FileId].c_str());
+                strcpy(FileName,m_attachments[FileId].c_str());
 
-                sprintf(SendBuf,"--%s\r\n",BOUNDARY_TEXT);
-                strcat(SendBuf,"Content-Type: application/x-msdownload; name=\"");
-                strcat(SendBuf,&FileName[Attachments[FileId].find_last_of("\\") + 1]);
-                strcat(SendBuf,"\"\r\n");
-                strcat(SendBuf,"Content-Transfer-Encoding: base64\r\n");
-                strcat(SendBuf,"Content-Disposition: attachment; filename=\"");
-                strcat(SendBuf,&FileName[Attachments[FileId].find_last_of("\\") + 1]);
-                strcat(SendBuf,"\"\r\n");
-                strcat(SendBuf,"\r\n");
+                sprintf(send_buffer,"--%s\r\n",BOUNDARY_TEXT);
+                strcat(send_buffer,"Content-Type: application/x-msdownload; name=\"");
+                strcat(send_buffer,&FileName[m_attachments[FileId].find_last_of("\\") + 1]);
+                strcat(send_buffer,"\"\r\n");
+                strcat(send_buffer,"Content-Transfer-Encoding: base64\r\n");
+                strcat(send_buffer,"Content-Disposition: attachment; filename=\"");
+                strcat(send_buffer,&FileName[m_attachments[FileId].find_last_of("\\") + 1]);
+                strcat(send_buffer,"\"\r\n");
+                strcat(send_buffer,"\r\n");
 
-                SendData();
+                send_data();
 
                 // opening the file:
                 hFile = fopen(FileName,"rb");
@@ -404,19 +404,19 @@ namespace md
                     for(i=0;i<FileSize/54+1;i++)
                     {
                         res = fread(FileBuf,sizeof(char),54,hFile);
-                        MsgPart ? strcat(SendBuf,base64_encode(reinterpret_cast<const unsigned char*>(FileBuf),res).c_str())
-                                : strcpy(SendBuf,base64_encode(reinterpret_cast<const unsigned char*>(FileBuf),res).c_str());
-                        strcat(SendBuf,"\r\n");
+                        MsgPart ? strcat(send_buffer,base64_encode(reinterpret_cast<const unsigned char*>(FileBuf),res).c_str())
+                                : strcpy(send_buffer,base64_encode(reinterpret_cast<const unsigned char*>(FileBuf),res).c_str());
+                        strcat(send_buffer,"\r\n");
                         MsgPart += res + 2;
                         if(MsgPart >= BUFFER_SIZE/2)
                         { // sending part of the message
                             MsgPart = 0;
-                            SendData(); // FileBuf, FileName, fclose(hFile);
+                            send_data(); // FileBuf, FileName, fclose(hFile);
                         }
                     }
                     if(MsgPart)
                     {
-                        SendData(); // FileBuf, FileName, fclose(hFile);
+                        send_data(); // FileBuf, FileName, fclose(hFile);
                     }
                 }
                 fclose(hFile);
@@ -425,20 +425,20 @@ namespace md
             delete[] FileName;
 
             // sending last message block (if there is one or more attachments)
-            if(Attachments.size())
+            if(m_attachments.size())
             {
-                sprintf(SendBuf,"\r\n--%s--\r\n",BOUNDARY_TEXT);
-                SendData();
+                sprintf(send_buffer,"\r\n--%s--\r\n",BOUNDARY_TEXT);
+                send_data();
             }
 
             // <CRLF> . <CRLF>
-            strcpy(SendBuf,"\r\n.\r\n");
-            SendData();
+            strcpy(send_buffer,"\r\n.\r\n");
+            send_data();
             bAccepted = false;
             do
             {
-                ReceiveData();
-                switch(SmtpXYZdigits())
+                receive_data();
+                switch(smtp_xyz_digits())
                 {
                     case 250:
                         bAccepted = true;
@@ -451,13 +451,13 @@ namespace md
             // ***** CLOSING CONNECTION *****
 
             // QUIT <CRLF>
-            strcpy(SendBuf,"QUIT\r\n");
-            SendData();
+            strcpy(send_buffer,"QUIT\r\n");
+            send_data();
             bAccepted = false;
             do
             {
-                ReceiveData();
-                switch(SmtpXYZdigits())
+                receive_data();
+                switch(smtp_xyz_digits())
                 {
                     case 221:
                         bAccepted = true;
@@ -467,11 +467,11 @@ namespace md
                 }
             }while(!bAccepted);
 
-            close(hSocket);
-            hSocket = NULL;
+            close(m_socket);
+            m_socket = NULL;
         }
 
-        SOCKET CSmtp::ConnectRemoteServer(const char *szServer,const unsigned short nPort_)
+        SOCKET CSmtp::connect_remote_server(const char *server, const unsigned short port)
         {
             unsigned short nPort = 0;
             LPSERVENT lpServEnt;
@@ -489,8 +489,8 @@ namespace md
             if((hSocket = socket(PF_INET, SOCK_STREAM,0)) == INVALID_SOCKET)
                 throw ECSmtp(ECSmtp::WSA_INVALID_SOCKET);
 
-            if(nPort_ != 0)
-                nPort = htons(nPort_);
+            if(port != 0)
+                nPort = htons(port);
             else
             {
                 lpServEnt = getservbyname("mail", 0);
@@ -502,11 +502,11 @@ namespace md
 
             sockAddr.sin_family = AF_INET;
             sockAddr.sin_port = nPort;
-            if((sockAddr.sin_addr.s_addr = inet_addr(szServer)) == INADDR_NONE)
+            if((sockAddr.sin_addr.s_addr = inet_addr(server)) == INADDR_NONE)
             {
                 LPHOSTENT host;
 
-                host = gethostbyname(szServer);
+                host = gethostbyname(server);
                 if (host)
                     memcpy(&sockAddr.sin_addr,host->h_addr_list[0],host->h_length);
                 else
@@ -568,15 +568,15 @@ namespace md
             return hSocket;
         }
 
-        int CSmtp::SmtpXYZdigits()
+        int CSmtp::smtp_xyz_digits()
         {
-            assert(RecvBuf);
-            if(RecvBuf == NULL)
+            assert(m_receive_buffer);
+            if(m_receive_buffer == NULL)
                 return 0;
-            return (RecvBuf[0]-'0')*100 + (RecvBuf[1]-'0')*10 + RecvBuf[2]-'0';
+            return (m_receive_buffer[0]-'0')*100 + (m_receive_buffer[1]-'0')*10 + m_receive_buffer[2]-'0';
         }
 
-        void CSmtp::FormatHeader(char* header)
+        void CSmtp::format_header(char *header)
         {
             char month[][4] = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
             size_t i;
@@ -593,43 +593,43 @@ namespace md
                 throw ECSmtp(ECSmtp::TIME_ERROR);
 
             // check for at least one recipient
-            if(Recipients.size())
+            if(m_recipients.size())
             {
-                for (i=0;i<Recipients.size();i++)
+                for (i=0;i<m_recipients.size();i++)
                 {
                     if(i > 0)
                         to.append(",");
-                    to += Recipients[i].Name;
+                    to += m_recipients[i].m_name;
                     to.append("<");
-                    to += Recipients[i].Mail;
+                    to += m_recipients[i].m_mail;
                     to.append(">");
                 }
             }
             else
                 throw ECSmtp(ECSmtp::UNDEF_RECIPIENTS);
 
-            if(CCRecipients.size())
+            if(m_cc_recipients.size())
             {
-                for (i=0;i<CCRecipients.size();i++)
+                for (i=0;i<m_cc_recipients.size();i++)
                 {
                     if(i > 0)
                         cc. append(",");
-                    cc += CCRecipients[i].Name;
+                    cc += m_cc_recipients[i].m_name;
                     cc.append("<");
-                    cc += CCRecipients[i].Mail;
+                    cc += m_cc_recipients[i].m_mail;
                     cc.append(">");
                 }
             }
 
-            if(BCCRecipients.size())
+            if(!m_bcc_recipients.empty())
             {
-                for (i=0;i<BCCRecipients.size();i++)
+                for (i=0;i<m_bcc_recipients.size();i++)
                 {
                     if(i > 0)
                         bcc.append(",");
-                    bcc += BCCRecipients[i].Name;
+                    bcc += m_bcc_recipients[i].m_name;
                     bcc.append("<");
-                    bcc += BCCRecipients[i].Mail;
+                    bcc += m_bcc_recipients[i].m_mail;
                     bcc.append(">");
                 }
             }
@@ -643,36 +643,36 @@ namespace md
                     timeinfo->tm_sec);
 
             // From: <SP> <sender>  <SP> "<" <sender-email> ">" <CRLF>
-            if(!m_sMailFrom.size())
+            if(!m_mail_from.size())
                 throw ECSmtp(ECSmtp::UNDEF_MAIL_FROM);
             strcat(header,"From: ");
-            if(m_sNameFrom.size())
-                strcat(header, m_sNameFrom.c_str());
+            if(m_name_from.size())
+                strcat(header, m_name_from.c_str());
             strcat(header," <");
-            if(m_sNameFrom.size())
-                strcat(header,m_sMailFrom.c_str());
+            if(m_name_from.size())
+                strcat(header,m_mail_from.c_str());
             else
                 strcat(header,"mail@domain.com");
             strcat(header, ">\r\n");
 
             // X-Mailer: <SP> <xmailer-app> <CRLF>
-            if(m_sXMailer.size())
+            if(m_mailer.size())
             {
                 strcat(header,"X-Mailer: ");
-                strcat(header, m_sXMailer.c_str());
+                strcat(header, m_mailer.c_str());
                 strcat(header, "\r\n");
             }
 
             // Reply-To: <SP> <reverse-path> <CRLF>
-            if(m_sReplyTo.size())
+            if(m_reply_to.size())
             {
                 strcat(header, "Reply-To: ");
-                strcat(header, m_sReplyTo.c_str());
+                strcat(header, m_reply_to.c_str());
                 strcat(header, "\r\n");
             }
 
             // X-Priority: <SP> <number> <CRLF>
-            switch(m_iXPriority)
+            switch(m_xPriority)
             {
                 case XPRIORITY_HIGH:
                     strcat(header,"X-Priority: 2 (High)\r\n");
@@ -693,14 +693,14 @@ namespace md
             strcat(header, "\r\n");
 
             // Cc: <SP> <remote-user-mail> <CRLF>
-            if(CCRecipients.size())
+            if(m_cc_recipients.size())
             {
                 strcat(header,"Cc: ");
                 strcat(header, cc.c_str());
                 strcat(header, "\r\n");
             }
 
-            if(BCCRecipients.size())
+            if(m_bcc_recipients.size())
             {
                 strcat(header,"Bcc: ");
                 strcat(header, bcc.c_str());
@@ -708,22 +708,22 @@ namespace md
             }
 
             // Subject: <SP> <subject-text> <CRLF>
-            if(!m_sSubject.size())
+            if(!m_subject.size())
                 strcat(header, "Subject:  ");
             else
             {
                 strcat(header, "Subject: ");
-                strcat(header, m_sSubject.c_str());
+                strcat(header, m_subject.c_str());
             }
             strcat(header, "\r\n");
 
             // MIME-Version: <SP> 1.0 <CRLF>
             strcat(header,"MIME-Version: 1.0\r\n");
-            if(!Attachments.size())
+            if(!m_attachments.size())
             { // no attachments
                 strcat(header,"Content-type: text/plain; charset=US-ASCII\r\n");
                 strcat(header,"Content-Transfer-Encoding: 7bit\r\n");
-                strcat(SendBuf,"\r\n");
+                strcat(send_buffer,"\r\n");
             }
             else
             { // there is one or more attachments
@@ -732,18 +732,18 @@ namespace md
                 strcat(header,"\"\r\n");
                 strcat(header,"\r\n");
                 // first goes text message
-                strcat(SendBuf,"--");
-                strcat(SendBuf,BOUNDARY_TEXT);
-                strcat(SendBuf,"\r\n");
-                strcat(SendBuf,"Content-type: text/plain; charset=US-ASCII\r\n");
-                strcat(SendBuf,"Content-Transfer-Encoding: 7bit\r\n");
-                strcat(SendBuf,"\r\n");
+                strcat(send_buffer,"--");
+                strcat(send_buffer,BOUNDARY_TEXT);
+                strcat(send_buffer,"\r\n");
+                strcat(send_buffer,"Content-type: text/plain; charset=US-ASCII\r\n");
+                strcat(send_buffer,"Content-Transfer-Encoding: 7bit\r\n");
+                strcat(send_buffer,"\r\n");
             }
 
             // done
         }
 
-        void CSmtp::ReceiveData()
+        void CSmtp::receive_data()
         {
             int res,i = 0;
             fd_set fdread;
@@ -752,93 +752,93 @@ namespace md
             time.tv_sec = TIME_IN_SEC;
             time.tv_usec = 0;
 
-            assert(RecvBuf);
+            assert(m_receive_buffer);
 
-            if(RecvBuf == NULL)
+            if(m_receive_buffer == NULL)
                 throw ECSmtp(ECSmtp::RECVBUF_IS_EMPTY);
 
             while(1)
             {
                 FD_ZERO(&fdread);
 
-                FD_SET(hSocket,&fdread);
+                FD_SET(m_socket,&fdread);
 
-                if((res = select(hSocket+1, &fdread, NULL, NULL, &time)) == SOCKET_ERROR)
+                if((res = select(m_socket+1, &fdread, NULL, NULL, &time)) == SOCKET_ERROR)
                 {
-                    FD_CLR(hSocket,&fdread);
+                    FD_CLR(m_socket,&fdread);
                     throw ECSmtp(ECSmtp::WSA_SELECT);
                 }
 
                 if(!res)
                 {
                     //timeout
-                    FD_CLR(hSocket,&fdread);
+                    FD_CLR(m_socket,&fdread);
                     throw ECSmtp(ECSmtp::SERVER_NOT_RESPONDING);
                 }
 
-                if(res && FD_ISSET(hSocket,&fdread))
+                if(res && FD_ISSET(m_socket,&fdread))
                 {
                     if(i >= BUFFER_SIZE)
                     {
-                        FD_CLR(hSocket,&fdread);
+                        FD_CLR(m_socket,&fdread);
                         throw ECSmtp(ECSmtp::LACK_OF_MEMORY);
                     }
-                    if(recv(hSocket,&RecvBuf[i++],1,0) == SOCKET_ERROR)
+                    if(recv(m_socket,&m_receive_buffer[i++],1,0) == SOCKET_ERROR)
                     {
-                        FD_CLR(hSocket,&fdread);
+                        FD_CLR(m_socket,&fdread);
                         throw ECSmtp(ECSmtp::WSA_RECV);
                     }
-                    if(RecvBuf[i-1]=='\n')
+                    if(m_receive_buffer[i-1]=='\n')
                     {
-                        RecvBuf[i] = '\0';
+                        m_receive_buffer[i] = '\0';
                         break;
                     }
                 }
             }
 
-            FD_CLR(hSocket,&fdread);
+            FD_CLR(m_socket,&fdread);
         }
 
-        void CSmtp::SendData()
+        void CSmtp::send_data()
         {
-            int idx = 0,res,nLeft = strlen(SendBuf);
+            int idx = 0,res,nLeft = strlen(send_buffer);
             fd_set fdwrite;
             timeval time;
 
             time.tv_sec = TIME_IN_SEC;
             time.tv_usec = 0;
 
-            assert(SendBuf);
+            assert(send_buffer);
 
-            if(SendBuf == NULL)
+            if(send_buffer == NULL)
                 throw ECSmtp(ECSmtp::SENDBUF_IS_EMPTY);
 
             while(1)
             {
                 FD_ZERO(&fdwrite);
 
-                FD_SET(hSocket,&fdwrite);
+                FD_SET(m_socket,&fdwrite);
 
-                if((res = select(hSocket+1,NULL,&fdwrite,NULL,&time)) == SOCKET_ERROR)
+                if((res = select(m_socket+1,NULL,&fdwrite,NULL,&time)) == SOCKET_ERROR)
                 {
-                    FD_CLR(hSocket,&fdwrite);
+                    FD_CLR(m_socket,&fdwrite);
                     throw ECSmtp(ECSmtp::WSA_SELECT);
                 }
 
                 if(!res)
                 {
                     //timeout
-                    FD_CLR(hSocket,&fdwrite);
+                    FD_CLR(m_socket,&fdwrite);
                     throw ECSmtp(ECSmtp::SERVER_NOT_RESPONDING);
                 }
 
-                if(res && FD_ISSET(hSocket,&fdwrite))
+                if(res && FD_ISSET(m_socket,&fdwrite))
                 {
                     if(nLeft > 0)
                     {
-                        if((res = send(hSocket,&SendBuf[idx],nLeft,0)) == SOCKET_ERROR)
+                        if((res = send(m_socket,&send_buffer[idx],nLeft,0)) == SOCKET_ERROR)
                         {
-                            FD_CLR(hSocket,&fdwrite);
+                            FD_CLR(m_socket,&fdwrite);
                             throw ECSmtp(ECSmtp::WSA_SEND);
                         }
                         if(!res)
@@ -851,10 +851,10 @@ namespace md
                 }
             }
 
-            FD_CLR(hSocket,&fdwrite);
+            FD_CLR(m_socket,&fdwrite);
         }
 
-        const char* CSmtp::GetLocalHostName() const
+        const char* CSmtp::get_local_hostname() const
         {
             char* str = NULL;
 
@@ -866,123 +866,123 @@ namespace md
                 throw ECSmtp(ECSmtp::WSA_HOSTNAME);
             }
             delete[] str;
-            return m_sLocalHostName.c_str();
+            return m_local_hostname.c_str();
         }
 
-        unsigned int CSmtp::GetRecipientCount() const
+        unsigned int CSmtp::get_recipient_count() const
         {
-            return Recipients.size();
+            return m_recipients.size();
         }
 
-        unsigned int CSmtp::GetBCCRecipientCount() const
+        unsigned int CSmtp::get_BCC_recipient_count() const
         {
-            return BCCRecipients.size();
+            return m_bcc_recipients.size();
         }
 
-        unsigned int CSmtp::GetCCRecipientCount() const
+        unsigned int CSmtp::get_CC_recipient_count() const
         {
-            return CCRecipients.size();
+            return m_cc_recipients.size();
         }
 
-        const char* CSmtp::GetReplyTo() const
+        const char* CSmtp::get_reply_to() const
         {
-            return m_sReplyTo.c_str();
+            return m_reply_to.c_str();
         }
 
-        const char* CSmtp::GetMailFrom() const
+        const char* CSmtp::get_mail_from() const
         {
-            return m_sMailFrom.c_str();
+            return m_mail_from.c_str();
         }
 
-        const char* CSmtp::GetSenderName() const
+        const char* CSmtp::get_sender_name() const
         {
-            return m_sNameFrom.c_str();
+            return m_name_from.c_str();
         }
 
-        const char* CSmtp::GetSubject() const
+        const char* CSmtp::get_subject() const
         {
-            return m_sSubject.c_str();
+            return m_subject.c_str();
         }
 
-        const char* CSmtp::GetXMailer() const
+        const char* CSmtp::get_xmailer() const
         {
-            return m_sXMailer.c_str();
+            return m_mailer.c_str();
         }
 
-        CSmptXPriority CSmtp::GetXPriority() const
+        CSmptXPriority CSmtp::get_xpriority() const
         {
-            return m_iXPriority;
+            return m_xPriority;
         }
 
-        const char* CSmtp::GetMsgLineText(unsigned int Line) const
+        const char* CSmtp::get_message_line_text(unsigned int line_number) const
         {
-            if(Line > MsgBody.size())
+            if(line_number > m_message_body.size())
                 throw ECSmtp(ECSmtp::OUT_OF_MSG_RANGE);
-            return MsgBody.at(Line).c_str();
+            return m_message_body.at(line_number).c_str();
         }
 
-        unsigned int CSmtp::GetMsgLines() const
+        unsigned int CSmtp::get_line_count() const
         {
-            return MsgBody.size();
+            return m_message_body.size();
         }
 
-        void CSmtp::SetXPriority(CSmptXPriority priority)
+        void CSmtp::set_xpriority(CSmptXPriority priority)
         {
-            m_iXPriority = priority;
+            m_xPriority = priority;
         }
 
-        void CSmtp::SetReplyTo(const char *ReplyTo)
+        void CSmtp::set_reply_to(const char *ReplyTo)
         {
-            //m_sReplyTo.erase();
-            m_sReplyTo.insert(0,ReplyTo);
+            //m_reply_to.erase();
+            m_reply_to.insert(0,ReplyTo);
         }
 
-        void CSmtp::SetSenderMail(const char *EMail)
+        void CSmtp::set_sender_mail(const char *EMail)
         {
-            m_sMailFrom.erase();
-            m_sMailFrom.insert(0,EMail);
+            m_mail_from.erase();
+            m_mail_from.insert(0,EMail);
         }
 
-        void CSmtp::SetSenderName(const char *Name)
+        void CSmtp::set_sender_name(const char *Name)
         {
-            m_sNameFrom.erase();
-            m_sNameFrom.insert(0,Name);
+            m_name_from.erase();
+            m_name_from.insert(0,Name);
         }
 
-        void CSmtp::SetSubject(const char *Subject)
+        void CSmtp::set_subject(const char *Subject)
         {
-            m_sSubject.erase();
-            m_sSubject.insert(0,Subject);
+            m_subject.erase();
+            m_subject.insert(0,Subject);
         }
 
-        void CSmtp::SetXMailer(const char *XMailer)
+        void CSmtp::set_xmailer(const char *XMailer)
         {
-            m_sXMailer.erase();
-            m_sXMailer.insert(0,XMailer);
+            m_mailer.erase();
+            m_mailer.insert(0,XMailer);
         }
 
-        void CSmtp::SetLogin(const char *Login)
+        void CSmtp::set_login(const char *Login)
         {
-            m_sLogin.erase();
-            m_sLogin.insert(0,Login);
+            m_login.erase();
+            m_login.insert(0,Login);
         }
 
-        void CSmtp::SetPassword(const char *Password)
+        void CSmtp::set_password(const char *Password)
         {
-            m_sPassword.erase();
-            m_sPassword.insert(0,Password);
+            m_password.erase();
+            m_password.insert(0,Password);
         }
 
-        void CSmtp::SetSMTPServer(const char* SrvName,const unsigned short SrvPort)
+        void CSmtp::set_smtp_server(const char *server, const unsigned short port)
         {
-            m_iSMTPSrvPort = SrvPort;
-            m_sSMTPSrvName.erase();
-            m_sSMTPSrvName.insert(0,SrvName);
+            m_smtp_server_port = port;
+            m_smtp_server_name.erase();
+            m_smtp_server_name.insert(0,server);
         }
 
-        std::string ECSmtp::GetErrorText() const
+        std::string ECSmtp::get_error_message() const
         {
-            switch(ErrorCode)
+            switch(m_error_code)
             {
                 case ECSmtp::CSMTP_NO_ERROR:
                     return "";
@@ -1053,9 +1053,9 @@ namespace md
                 case ECSmtp::TIME_ERROR:
                     return "time() error";
                 case ECSmtp::RECVBUF_IS_EMPTY:
-                    return "RecvBuf is empty";
+                    return "m_receive_buffer is empty";
                 case ECSmtp::SENDBUF_IS_EMPTY:
-                    return "SendBuf is empty";
+                    return "send_buffer is empty";
                 case ECSmtp::OUT_OF_MSG_RANGE:
                     return "Specified line number is out of message size";
                 default:
