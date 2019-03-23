@@ -1,9 +1,4 @@
-//
-// Created by boa on 20.03.19.
-//
-
-#ifndef MAIL_DISTRIBUTION_BASE_64_HPP
-#define MAIL_DISTRIBUTION_BASE_64_HPP
+#pragma once
 #include <string>
 namespace md
 {
@@ -13,7 +8,3 @@ namespace md
         std::string base64_decode(std::string const& s);
     }
 }
-
-
-
-#endif //MAIL_DISTRIBUTION_BASE_64_HPP

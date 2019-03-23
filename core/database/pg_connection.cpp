@@ -1,7 +1,3 @@
-//
-// Created by boa on 20.03.19.
-//
-
 #include "pg_connection.hpp"
 
 namespace md

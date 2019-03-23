@@ -1,10 +1,9 @@
+#include <utility>
 
-#ifndef MAIL_DISTRIBUTION_SMTP_SERVER_HPP
-#define MAIL_DISTRIBUTION_SMTP_SERVER_HPP
+#include <utility>
 
+#pragma once
 
-#include <vector>
-#include <string.h>
 #include <assert.h>
 
 #include <sys/types.h>
@@ -16,6 +15,10 @@
 #include <errno.h>
 #include <stdio.h>
 #include <iostream>
+#include <vector>
+#include <string.h>
+
+#include "../../tools/service/service.hpp"
 
 #define SOCKET_ERROR -1
 #define INVALID_SOCKET -1
@@ -32,6 +35,7 @@ namespace md
 {
     namespace smtp
     {
+
 #define TIME_IN_SEC        10        // how long client will wait for server response in non-blocking mode
 #define BUFFER_SIZE 10240      // send_data and RecvData buffers sizes
 #define MSG_SIZE_IN_MB 5        // the maximum size of the message with all attachments
@@ -85,7 +89,7 @@ namespace md
                 MSG_TOO_BIG,
                 BAD_LOGIN_PASS,
                 UNDEF_XYZ_RESPONSE,
-                LACK_OF_MEMORY,
+                BAD_MEMORY_ALLOCC,
                 TIME_ERROR,
                 RECVBUF_IS_EMPTY,
                 SENDBUF_IS_EMPTY,
@@ -111,81 +115,6 @@ namespace md
 
         class CSmtp
         {
-        public:
-            CSmtp();
-
-            virtual ~CSmtp();
-
-            void add_recipient(const char *email, const char *name = nullptr);
-
-            void add_BCC_recipient(const char *email, const char *name = nullptr);
-
-            void add_CC_recipient(const char *email, const char *name = nullptr);
-
-            void add_attachment(const char *path);
-
-            void add_msg_line(const char *text);
-
-            void delete_recipients();
-
-            void delete_BCC_recipients();
-
-            void delete_CC_recipients();
-
-            void delete_attachments();
-
-            void delete_message_lines();
-
-            void delete_message_line(unsigned int line_number);
-
-            void modify_message_line(unsigned int line_number, const char *text);
-
-            unsigned int get_BCC_recipient_count() const;
-
-            unsigned int get_CC_recipient_count() const;
-
-            unsigned int get_recipient_count() const;
-
-            const char *GetLocalHostIP() const;
-
-            const char *get_local_hostname() const;
-
-            const char *get_message_line_text(unsigned int line_number) const;
-
-            unsigned int get_line_count() const;
-
-            const char *get_reply_to() const;
-
-            const char *get_mail_from() const;
-
-            const char *get_sender_name() const;
-
-            const char *get_subject() const;
-
-            const char *get_xmailer() const;
-
-            CSmptXPriority get_xpriority() const;
-
-            void send_mail();
-
-            void set_subject(const char *);
-
-            void set_sender_name(const char *);
-
-            void set_sender_mail(const char *);
-
-            void set_reply_to(const char *);
-
-            void set_xmailer(const char *);
-
-            void set_login(const char *);
-
-            void set_password(const char *);
-
-            void set_xpriority(CSmptXPriority);
-
-            void set_smtp_server(const char *server, const unsigned short port = 0);
-
         private:
             std::string m_local_hostname;
             std::string m_mail_from;
@@ -199,23 +128,106 @@ namespace md
             std::string m_smtp_server_name;
             unsigned short m_smtp_server_port;
             CSmptXPriority m_xPriority;
-            char *send_buffer;
-            char *m_receive_buffer;
+            char* m_send_buffer;
+            char * m_receive_buffer;
 
             SOCKET m_socket;
 
             struct Recipient
             {
+
+
                 std::string m_name;
                 std::string m_mail;
+                Recipient() = default;
+
+                Recipient(std::string name, std::string mail) : m_name(std::move(name)), m_mail(std::move(mail))
+                {}
             };
+            using Recipients = std::vector<Recipient>;
 
-            std::vector<Recipient> m_recipients;
-            std::vector<Recipient> m_cc_recipients;
-            std::vector<Recipient> m_bcc_recipients;
-            std::vector<std::string> m_attachments;
-            std::vector<std::string> m_message_body;
+            Recipients m_recipients;
+            Recipients m_cc_recipients;
+            Recipients m_bcc_recipients;
+            StringList m_attachments;
+            StringList m_message_body;
 
+        public:
+            CSmtp();
+
+            virtual ~CSmtp() = default;
+
+            void add_recipient(std::string email, std::string name);
+
+            void add_BCC_recipient(std::string email, std::string name = "");
+
+            void add_CC_recipient(std::string email, std::string name );
+
+            void add_attachment(std::string &&path);
+
+            void add_msg_line(std::string text);
+
+            void delete_recipients();
+
+            void delete_BCC_recipients();
+
+            void delete_CC_recipients();
+
+            void delete_attachments();
+
+            void delete_message_lines();
+
+            void delete_message_line(unsigned int line_number);
+
+            void modify_message_line(unsigned int line_number, std::string text);
+
+            unsigned long get_BCC_recipient_count() const;
+
+            unsigned long get_CC_recipient_count() const;
+
+            unsigned long get_recipient_count() const;
+
+            const char *GetLocalHostIP() const;
+
+            const char *get_local_hostname() const;
+
+            std::string get_message_line_text(unsigned int line_number) const;
+
+            unsigned long get_line_count() const;
+
+            std::string get_reply_to() const;
+
+            std::string get_mail_from() const;
+
+            std::string get_sender_name() const;
+
+            std::string get_subject() const;
+
+            std::string get_xmailer() const;
+
+            CSmptXPriority get_xpriority() const;
+
+            void send_mail();
+
+            void set_subject(std::string);
+
+            void set_sender_name(const char *);
+
+            void set_sender_mail(std::string email);
+
+            void set_reply_to(std::string);
+
+            void set_xmailer(std::string mailer);
+
+            void set_login(std::string login);
+
+            void set_password(std::string password);
+
+            void set_xpriority(CSmptXPriority);
+
+            void set_smtp_server(std::string server, const unsigned short port = 0);
+
+        private:
             void receive_data();
 
             void send_data();
@@ -226,10 +238,9 @@ namespace md
 
             SOCKET connect_remote_server(const char *server, const unsigned short port = 0);
 
+
         };
 
 
     }
 }
-
-#endif //MAIL_DISTRIBUTION_SMTP_SERVER_HPP

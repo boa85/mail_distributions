@@ -1,10 +1,4 @@
-//
-// Created by boa on 20.03.19.
-//
-
-#ifndef MAIL_DISTRIBUTION_PG_CONNECTION_HPP
-#define MAIL_DISTRIBUTION_PG_CONNECTION_HPP
-
+#pragma  once
 #include <memory>
 #include <mutex>
 #include <libpq-fe.h>
@@ -35,6 +29,3 @@ namespace md
 
     }// namespace db
 }// namespace md
-
-
-#endif //MAIL_DISTRIBUTION_PG_CONNECTION_HPP

@@ -1,7 +1,9 @@
 #include <thread>
 #include <iostream>
-#include "tools/database/pg_backend.hpp"
-#include "core/smtp_server.hpp"
+#include "core/smtp/smtp_server.hpp"
+#include "core/database/pg_backend.hpp"
+#include "core/database/pg_connection.hpp"
+
 using namespace md::db;
 using namespace md::smtp;
 void testConnection(const std::shared_ptr<PGBackend> &pgBackend)
@@ -42,8 +44,8 @@ void sendMail()
         mail.set_sender_name("User");
         mail.set_sender_mail("user@domain.com");
         mail.set_reply_to("user@domain.com");
-        mail.set_subject("The message");
-        mail.add_recipient("friend@domain2.com");
+        mail.set_subject(("The message"));
+        mail.add_recipient("user@user.com", "user");
         mail.set_xpriority(XPRIORITY_NORMAL);
         mail.set_xmailer("The Bat! (v3.02) Professional");
         mail.add_msg_line("Hello,");
