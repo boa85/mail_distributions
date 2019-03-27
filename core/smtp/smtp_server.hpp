@@ -35,11 +35,11 @@ namespace md
 {
     namespace smtp
     {
-
-#define TIME_IN_SEC        10        // how long client will wait for server response in non-blocking mode
+        using namespace service;
+#define TIME_IN_SEC 10        // how long client will wait for server response in non-blocking mode
 #define BUFFER_SIZE 10240      // send_data and RecvData buffers sizes
 #define MSG_SIZE_IN_MB 5        // the maximum size of the message with all attachments
-#define COUNTER_VALUE    100        // how many times program will try to receive data
+#define COUNTER_VALUE 100        // how many times program will try to receive data
 
         const char BOUNDARY_TEXT[] = "__MESSAGE__ID__54yg6f6h6y456345";
 
@@ -107,7 +107,7 @@ namespace md
                 return m_error_code;
             }
 
-            std::string get_error_message() const;
+            std::string get_error_message();
 
         private:
             CSmtpError m_error_code;
@@ -156,6 +156,8 @@ namespace md
             CSmtp();
 
             virtual ~CSmtp() = default;
+
+            void init(const StringList &list, const std::string &smtp_host = "", unsigned smtp_port = 25);
 
             void add_recipient(std::string email, std::string name);
 
@@ -211,7 +213,7 @@ namespace md
 
             void set_subject(std::string);
 
-            void set_sender_name(const char *);
+            void set_sender_name(std::string name);
 
             void set_sender_mail(std::string email);
 
@@ -225,7 +227,7 @@ namespace md
 
             void set_xpriority(CSmptXPriority);
 
-            void set_smtp_server(std::string server, const unsigned short port = 0);
+            void set_smtp_server(std::string server, unsigned int port = 25);
 
         private:
             void receive_data();
@@ -236,9 +238,7 @@ namespace md
 
             int smtp_xyz_digits();
 
-            SOCKET connect_remote_server(const char *server, const unsigned short port = 0);
-
-
+            SOCKET connect_remote_server(const char *server, unsigned short port = 0);
         };
 
 

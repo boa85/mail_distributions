@@ -2,7 +2,6 @@
 #include <zconf.h>
 #include "smtp_server.hpp"
 #include "../../tools/service/base_64.hpp"
-#include <string>
 
 namespace md
 {
@@ -15,11 +14,14 @@ namespace md
             m_xPriority = XPRIORITY_NORMAL;
             m_smtp_server_port = 0;
 
-            if ((m_receive_buffer = new char[BUFFER_SIZE]) == nullptr)
-                throw ECSmtp(ECSmtp::BAD_MEMORY_ALLOCC);
-
-            if ((m_send_buffer = new char[BUFFER_SIZE]) == nullptr)
-                throw ECSmtp(ECSmtp::BAD_MEMORY_ALLOCC);
+            if ((m_receive_buffer = new char[BUFFER_SIZE]) == nullptr) {
+                ECSmtp e(ECSmtp::BAD_MEMORY_ALLOCC);
+                write_sys_log(e.get_error_message());
+            }
+            if ((m_send_buffer = new char[BUFFER_SIZE]) == nullptr) {
+                ECSmtp e(ECSmtp::BAD_MEMORY_ALLOCC);
+                write_sys_log(e.get_error_message());
+            }
 
         }
 
@@ -31,16 +33,22 @@ namespace md
 
         void CSmtp::add_recipient(std::string email, std::string name)
         {
-            if (!is_valid_email(email))
+            if (!is_valid_email(email)) {
+                ECSmtp e(ECSmtp::UNDEF_RECIPIENT_MAIL);
+                write_sys_log(e.get_error_message());
                 throw ECSmtp(ECSmtp::UNDEF_RECIPIENT_MAIL);
+            }
 
             m_recipients.emplace_back(Recipient(std::move(email), std::move(name)));
         }
 
         void CSmtp::add_CC_recipient(std::string email, std::string name)
         {
-            if (!is_valid_email(email))
+            if (!is_valid_email(email)) {
+                ECSmtp e(ECSmtp::UNDEF_RECIPIENT_MAIL);
+                write_sys_log(e.get_error_message());
                 throw ECSmtp(ECSmtp::UNDEF_RECIPIENT_MAIL);
+            }
 
             m_cc_recipients.emplace_back(Recipient(std::move(email), std::move(name)));
         }
@@ -48,8 +56,11 @@ namespace md
 
         void CSmtp::add_BCC_recipient(std::string email, std::string name)
         {
-            if (!is_valid_email(email))
+            if (!is_valid_email(email)) {
+                ECSmtp e(ECSmtp::UNDEF_RECIPIENT_MAIL);
+                write_sys_log(e.get_error_message());
                 throw ECSmtp(ECSmtp::UNDEF_RECIPIENT_MAIL);
+            }
 
             Recipient recipient(std::move(email), std::move(name));
             m_bcc_recipients.emplace_back(recipient);
@@ -64,8 +75,11 @@ namespace md
 
         void CSmtp::delete_message_line(unsigned int line_number)
         {
-            if (line_number > m_message_body.size())
+            if (line_number > m_message_body.size()) {
+                ECSmtp e(ECSmtp::OUT_OF_MSG_RANGE);
+                write_sys_log(e.get_error_message());
                 throw ECSmtp(ECSmtp::OUT_OF_MSG_RANGE);
+            }
 
             m_message_body.erase(m_message_body.begin() + line_number);
         }
@@ -99,8 +113,11 @@ namespace md
 
         void CSmtp::modify_message_line(unsigned int line_number, std::string text)
         {
-            if (line_number > m_message_body.size())
+            if (line_number > m_message_body.size()) {
+                ECSmtp e(ECSmtp::OUT_OF_MSG_RANGE);
+                write_sys_log(e.get_error_message());
                 throw ECSmtp(ECSmtp::OUT_OF_MSG_RANGE);
+            }
 
             m_message_body.at(line_number) = std::move(text);
         }
@@ -124,8 +141,11 @@ namespace md
 
             // connecting to remote host:
             if ((m_socket =
-                         connect_remote_server(m_smtp_server_name.c_str(), m_smtp_server_port)) == INVALID_SOCKET)
+                         connect_remote_server(m_smtp_server_name.c_str(), m_smtp_server_port)) == INVALID_SOCKET) {
+                ECSmtp e(ECSmtp::WSA_INVALID_SOCKET);
+                write_sys_log(e.get_error_message());
                 throw ECSmtp(ECSmtp::WSA_INVALID_SOCKET);
+            }
 
             ECSmtp::CSmtpError error_code = ECSmtp::CSmtpError::CSMTP_NO_ERROR;
             auto try_receive_data = [this](const int response_code) -> bool {
@@ -134,6 +154,8 @@ namespace md
             };
             error_code = ECSmtp::SERVER_NOT_READY;
             if (!try_receive_data(220)) {
+                ECSmtp e(error_code);
+                write_sys_log(e.get_error_message());
                 throw ECSmtp(error_code);
             }
 
@@ -143,6 +165,8 @@ namespace md
             send_data();
 
             if (!try_receive_data(250)) {
+                ECSmtp e(ECSmtp::COMMAND_EHLO);
+                write_sys_log(e.get_error_message());
                 throw ECSmtp(ECSmtp::COMMAND_EHLO);
             }
 
@@ -159,14 +183,20 @@ namespace md
                     case 334:
                         bAccepted = true;
                         break;
-                    default:
+                    default: {
+                        ECSmtp e(ECSmtp::COMMAND_AUTH_LOGIN);
+                        write_sys_log(e.get_error_message());
                         throw ECSmtp(ECSmtp::COMMAND_AUTH_LOGIN);
+                    }
                 }
             } while (!bAccepted);
 
             // send login:
-            if (m_login.empty())
+            if (m_login.empty()) {
+                ECSmtp e(ECSmtp::UNDEF_LOGIN);
+                write_sys_log(e.get_error_message());
                 throw ECSmtp(ECSmtp::UNDEF_LOGIN);
+            }
 
             std::string encoded_login = base64_encode(reinterpret_cast<const unsigned char *>(m_login.c_str()),
                                                       m_login.size());
@@ -179,8 +209,9 @@ namespace md
                     case 334:
                         bAccepted = true;
                         break;
-                    default:
+                    default: {
                         throw ECSmtp(ECSmtp::UNDEF_XYZ_RESPONSE);
+                    }
                 }
             } while (!bAccepted);
 
@@ -426,8 +457,8 @@ namespace md
 
         SOCKET CSmtp::connect_remote_server(const char *server, const unsigned short port)
         {
-            unsigned short nPort = 0;
-            LPSERVENT lpServEnt;
+            unsigned short port_number = 0;
+            LPSERVENT lpservent;
             SOCKADDR_IN socket_address;
             unsigned long ul = 1;
             fd_set fd_except;
@@ -444,14 +475,14 @@ namespace md
                 throw ECSmtp(ECSmtp::WSA_INVALID_SOCKET);
 
             if (port != 0)
-                nPort = htons(port);
+                port_number = htons(port);
             else {
-                lpServEnt = getservbyname("mail", nullptr);
-                nPort = lpServEnt == nullptr ? htons(25) : static_cast<unsigned short>(lpServEnt->s_port);
+                lpservent = getservbyname("mail", nullptr);
+                port_number = lpservent == nullptr ? htons(25) : static_cast<unsigned short>(lpservent->s_port);
             }
 
             socket_address.sin_family = AF_INET;
-            socket_address.sin_port = nPort;
+            socket_address.sin_port = port_number;
             if ((socket_address.sin_addr.s_addr = inet_addr(server)) == INADDR_NONE) {
                 LPHOSTENT host;
 
@@ -865,10 +896,9 @@ namespace md
             m_mail_from = std::move(email);
         }
 
-        void CSmtp::set_sender_name(const char *Name)
+        void CSmtp::set_sender_name(std::string name)
         {
-            m_name_from.erase();
-            m_name_from.insert(0, Name);
+            m_name_from = std::move(name);
         }
 
         void CSmtp::set_subject(std::string subject)
@@ -891,13 +921,45 @@ namespace md
             m_password = std::move(password);
         }
 
-        void CSmtp::set_smtp_server(std::string server, const unsigned short port)
+        void CSmtp::set_smtp_server(std::string server, unsigned int port)
         {
             m_smtp_server_port = port;
             m_smtp_server_name = std::move(server);
         }
 
-        std::string ECSmtp::get_error_message() const
+        void CSmtp::init(const StringList &list, const std::string &smtp_host, unsigned smtp_port)
+        {
+
+            set_smtp_server(smtp_host, smtp_port);
+
+            set_login(list[0]);
+            set_password(list[1]);
+            set_sender_name(list[2]);
+            set_sender_mail(list[3]);
+
+            set_reply_to(list[4]);
+            set_subject((list[5]));
+            add_recipient(list[6], "user");
+            set_xpriority(static_cast<CSmptXPriority>(std::stoi(list[7])));
+            set_xmailer(list[8]);
+
+            add_msg_line(list[9]);
+//            mail.add_msg_line("");
+//            mail.add_msg_line("...");
+//            mail.add_msg_line("How are you today?");
+//            mail.add_msg_line("");
+//            mail.add_msg_line("Regards");
+////        mail.modMsgLine(5, "regards");
+////        mail.delMsgLine(2);
+////        mail.addMsgLine("User");
+//
+//            //mail.addAttachment("../test1.jpg");
+//            //mail.addAttachment("c:\\test2.exe");
+
+        }
+
+
+        std::string ECSmtp::get_error_message()
         {
             switch (m_error_code) {
                 case ECSmtp::CSMTP_NO_ERROR:
