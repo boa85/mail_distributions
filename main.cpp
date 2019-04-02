@@ -15,12 +15,12 @@ void send_mail(const StringList &list, const std::string &smtp_host, unsigned sm
         throw std::logic_error("invalid database record");
     }*/
     try {
-        SmtpServer mail;
+        CSmtp mail;
         mail.init(list, smtp_host, smtp_port);
         mail.set_security_type(USE_TLS);
         mail.send_mail();
     }
-    catch (SmtpException &e) {
+    catch (ECSmtp &e) {
         write_sys_log(e.get_error_message());
         std::cout << "Error: " << e.get_error_message().c_str() << ".\n";
     }
@@ -104,15 +104,10 @@ int main(int argc, char const *argv[])
         SysErrorCode error_code;
         auto db_conf = read_config(path_to_db_conf, CONFIG_TYPE::DATABASE, error_code);
         auto pg_backend = std::make_shared<PGBackend>();
-        auto server_conf = dynamic_cast<ServerConfig *>(read_config(path_to_server_conf, CONFIG_TYPE::SERVER,
-                                                                    error_code).get());
-
-        auto smtp_host = server_conf->m_domain;
-        auto smtp_port = server_conf->m_port;
         pg_backend->setup_connection(db_conf);
         std::vector<std::shared_ptr<std::thread>> vec;
         for (size_t i = 0; i < 1; ++i) {
-            vec.push_back(std::make_shared<std::thread>(std::thread(test_send_mail, pg_backend, smtp_host, smtp_port)));
+            vec.push_back(std::make_shared<std::thread>(std::thread(test_send_mail, pg_backend, "", 0)));
         }
 
         for (auto &i : vec) {
@@ -120,7 +115,7 @@ int main(int argc, char const *argv[])
         }
         return 0;
     }
-    catch (SmtpException &e) {
+    catch (ECSmtp &e) {
         openlog("mail_distribution", LOG_PERROR | LOG_PID, LOG_USER);
         syslog(LOG_NOTICE, "error %s", e.get_error_message().c_str());
         closelog();
