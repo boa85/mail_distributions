@@ -17,6 +17,7 @@ void send_mail(const StringList &list, const std::string &smtp_host, unsigned sm
     try {
         SmtpServer mail;
         mail.init(list, smtp_host, smtp_port);
+        mail.set_security_type(USE_TLS);
         mail.send_mail();
     }
     catch (SmtpException &e) {
@@ -68,6 +69,32 @@ test_send_mail(const PgbPtr &pgBackend, const std::string &smtp_host, unsigned s
 
 int main(int argc, char const *argv[])
 {
+
+    try {
+        SmtpServer server;
+        server.set_smtp_server("smtp.gmail.com", 587);
+        server.set_security_type(USE_TLS);
+        server.set_login("***");
+        server.set_password("***");
+        server.set_sender_name("User");
+        server.set_sender_mail("user@domain.com");
+        server.set_reply_to("user@domain.com");
+        server.set_subject("The message");
+        server.add_recipient("friend@domain2.com", "");
+        server.set_xpriority(XPRIORITY_NORMAL);
+        server.set_xmailer("The Bat! (v3.02) Professional");
+        server.add_msg_line("Hello,");
+        server.add_msg_line("");
+        server.add_msg_line("...");
+        server.add_msg_line("How are you today?");
+        server.add_msg_line("");
+        server.add_msg_line("Regards");
+        server.add_msg_line("User");
+        server.send_mail();
+    }
+    catch (std::exception &e) {
+        std::cerr << e.what() << std::endl;
+    }
 
     try {
         auto parser = std::make_shared<ArgumentParser>();
