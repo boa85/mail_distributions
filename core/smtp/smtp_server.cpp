@@ -5,11 +5,11 @@
 #include "../../tools/service/base_64.hpp"
 #include "md_5.hpp"
 
-namespace md
-{
-    namespace smtp
+namespace md::smtp
     {
-        using namespace service;
+
+
+    using namespace service;
 
         SmtpServer::SmtpServer()
                 : m_security_type(DO_NOT_SET)
@@ -63,7 +63,6 @@ namespace md
                 write_sys_log(e.get_error_message());
                 throw SmtpException(SmtpException::UNDEF_RECIPIENT_MAIL);
             }
-
             m_recipients.emplace_back(Recipient(std::move(email), std::move(name)));
         }
 
@@ -74,7 +73,6 @@ namespace md
                 write_sys_log(e.get_error_message());
                 throw SmtpException(SmtpException::UNDEF_RECIPIENT_MAIL);
             }
-
             m_cc_recipients.emplace_back(Recipient(std::move(email), std::move(name)));
         }
 
@@ -86,7 +84,6 @@ namespace md
                 write_sys_log(e.get_error_message());
                 throw SmtpException(SmtpException::UNDEF_RECIPIENT_MAIL);
             }
-
             Recipient recipient(std::move(email), std::move(name));
             m_bcc_recipients.emplace_back(recipient);
         }
@@ -105,7 +102,6 @@ namespace md
                 write_sys_log(e.get_error_message());
                 throw SmtpException(SmtpException::OUT_OF_MSG_RANGE);
             }
-
             m_message_body.erase(m_message_body.begin() + line_number);
         }
 
@@ -143,286 +139,132 @@ namespace md
                 write_sys_log(e.get_error_message());
                 throw SmtpException(SmtpException::OUT_OF_MSG_RANGE);
             }
-
             m_message_body.at(line_number) = std::move(text);
         }
 
+    void SmtpServer::clear_message()
+    {
+        delete_recipients();
+        delete_BCC_recipients();
+        delete_CC_recipients();
+        delete_attachments();
+        delete_message_lines();
+    }
+
         void SmtpServer::send_mail()
         {
-            unsigned int file_id;
-            size_t res;
-            unsigned int recipient_count;
 
-            char *filename = nullptr;
+            size_t res;
+
             char *file_buffer = nullptr;
 
             FILE *hFile = nullptr;
-            unsigned long int message_part;
             unsigned long int total_size;
-            unsigned long int file_size;
+
             bool bAccepted;
+            std::string::size_type position;
 
             // ***** CONNECTING TO SMTP SERVER *****
 
-            // connecting to remote host:
-            if ((m_socket = connect_remote_server(
-                    m_smtp_server_name.c_str(),
-                    m_smtp_server_port)) == INVALID_SOCKET) {
-                SmtpException e(SmtpException::WSA_INVALID_SOCKET);
-                write_sys_log(e.get_error_message());
-                throw SmtpException(SmtpException::WSA_INVALID_SOCKET);
-            }
-
-            SmtpException::CSmtpError error_code;
-            auto try_receive_data = [this](const int response_code) -> bool {
-                receive_data(nullptr);
-                return smtp_xyz_digits() == response_code;
-            };
-
-            error_code = SmtpException::SERVER_NOT_READY;
-            if (!try_receive_data(220)) {
-                SmtpException e(error_code);
-                write_sys_log(e.get_error_message());
-                throw SmtpException(error_code);
-            }
-
-            // EHLO <SP> <domain> <CRLF>
-            sprintf(m_send_buffer, "EHLO %s\r\n",
-                    get_local_hostname() != nullptr ? m_local_hostname.c_str() : "domain");
-            send_data(nullptr);
-
-            if (!try_receive_data(250)) {
-                SmtpException e(SmtpException::COMMAND_EHLO);
-                write_sys_log(m_receive_buffer);
-                write_sys_log(e.get_error_message());
-                throw SmtpException(SmtpException::COMMAND_EHLO);
-            }
-
-            // AUTH <SP> LOGIN <CRLF>
-            strcpy(m_send_buffer, "AUTH LOGIN\r\n");
-            send_data(nullptr);
-            bAccepted = false;
-
-            do {
-                receive_data(nullptr);
-                auto xyz_digit = smtp_xyz_digits();
-                switch (xyz_digit) {
-                    case 250:
-                        break;
-                    case 334:
-                        bAccepted = true;
-                        break;
-                    default: {
-                        SmtpException e(SmtpException::COMMAND_AUTH_LOGIN);
-                        write_sys_log(e.get_error_message() + m_receive_buffer);
-                        std::cerr << "server error message: " << m_receive_buffer << std::endl;
-                        throw SmtpException(SmtpException::COMMAND_AUTH_LOGIN);
-                    }
+            // connecting to remote host if not already connected
+            if (m_socket == INVALID_SOCKET) {
+                if (!connect_remote_server(
+                        m_smtp_server_name, m_smtp_server_port,
+                        m_security_type, m_authenticate)) {
+                    throw SmtpException(SmtpException::WSA_INVALID_SOCKET);
                 }
-            } while (!bAccepted);
-
-            // send login:
-            if (m_login.empty()) {
-                SmtpException e(SmtpException::UNDEF_LOGIN);
-                write_sys_log(e.get_error_message());
-                throw SmtpException(SmtpException::UNDEF_LOGIN);
             }
+            try {
+                //Allocate memory
+                if ((file_buffer = new char[55]) == nullptr)
+                    throw SmtpException(SmtpException::BAD_MEMORY_ALLOCC);
 
-            std::string encoded_login =
-                    base64_encode(
-                            reinterpret_cast<const unsigned char *>(m_login.c_str()),
-                            m_login.size());
-
-            sprintf(m_send_buffer, "%s\r\n", encoded_login.c_str());
-            send_data(nullptr);
-            bAccepted = false;
-            do {
-                receive_data(nullptr);
-                switch (smtp_xyz_digits()) {
-                    case 334:
-                        bAccepted = true;
-                        break;
-                    default: {
-                        throw SmtpException(SmtpException::UNDEF_XYZ_RESPONSE);
-                    }
-                }
-            } while (!bAccepted);
-
-            // send password:
-            if (m_password.empty())
-                throw SmtpException(SmtpException::UNDEF_PASSWORD);
-
-            std::string encoded_password = base64_encode(reinterpret_cast<const unsigned char *>(m_password.c_str()),
-                                                         m_password.size());
-            sprintf(m_send_buffer, "%s\r\n", encoded_password.c_str());
-            send_data(nullptr);
-            bAccepted = false;
-            do {
-                receive_data(nullptr);
-                switch (smtp_xyz_digits()) {
-                    case 235:
-                        bAccepted = true;
-                        break;
-                    case 334:
-                        break;
-                    case 535:
-                        throw SmtpException(SmtpException::BAD_LOGIN_PASS);
-                    default:
-                        throw SmtpException(SmtpException::UNDEF_XYZ_RESPONSE);
-                }
-            } while (!bAccepted);
-
-            // ***** SENDING E-MAIL *****
-
-            // MAIL <SP> FROM:<reverse-path> <CRLF>
-            if (m_mail_from.empty())
-                throw SmtpException(SmtpException::UNDEF_MAIL_FROM);
-
-            sprintf(m_send_buffer, "MAIL FROM:<%s>\r\n", m_mail_from.c_str());
-            send_data(nullptr);
-            bAccepted = false;
-            do {
-                receive_data(nullptr);
-                switch (smtp_xyz_digits()) {
-                    case 250:
-                        bAccepted = true;
-                        break;
-                    default:
-                        throw SmtpException(SmtpException::COMMAND_MAIL_FROM);
-                }
-            } while (!bAccepted);
-
-            // RCPT <SP> TO:<forward-path> <CRLF>
-            if (!(recipient_count = static_cast<unsigned int>(m_recipients.size())))
-                throw SmtpException(SmtpException::UNDEF_RECIPIENTS);
-
-            for (auto &m_recipient : m_recipients) {
-
-                sprintf(m_send_buffer, "RCPT TO:<%s>\r\n", (m_recipient.m_mail).c_str());
-                send_data(nullptr);
-                bAccepted = false;
-                do {
-                    receive_data(nullptr);
-                    switch (smtp_xyz_digits()) {
-                        case 250:
-                            bAccepted = true;
-                            break;
-                        default:
-                            recipient_count--;
-                    }
-                } while (!bAccepted);
-            }
-            if (recipient_count <= 0)
-                throw SmtpException(SmtpException::COMMAND_RCPT_TO);
-
-            for (auto &m_cc_recipient : m_cc_recipients) {
-                sprintf(m_send_buffer, "RCPT TO:<%s>\r\n", (m_cc_recipient.m_mail).c_str());
-                send_data(nullptr);
-                bAccepted = false;
-                do {
-                    receive_data(nullptr);
-                    switch (smtp_xyz_digits()) {
-                        case 250:
-                            bAccepted = true;
-                            break;
-                        default:; // not necessary to throw
-                    }
-                } while (!bAccepted);
-            }
-
-            for (auto &m_bcc_recipient : m_bcc_recipients) {
-                sprintf(m_send_buffer, "RCPT TO:<%s>\r\n", (m_bcc_recipient.m_mail).c_str());
-                send_data(nullptr);
-                bAccepted = false;
-                do {
-                    receive_data(nullptr);
-                    switch (smtp_xyz_digits()) {
-                        case 250:
-                            bAccepted = true;
-                            break;
-                        default:; // not necessary to throw
-                    }
-                } while (!bAccepted);
-            }
-
-            // DATA <CRLF>
-            strcpy(m_send_buffer, "DATA\r\n");
-            send_data(nullptr);
-            bAccepted = false;
-            do {
-                receive_data(nullptr);
-                switch (smtp_xyz_digits()) {
-                    case 354:
-                        bAccepted = true;
-                        break;
-                    case 250:
-                        break;
-                    default:
-                        throw SmtpException(SmtpException::COMMAND_DATA);
-                }
-            } while (!bAccepted);
-
-            // send header(s)
-            format_header(m_send_buffer);
-            send_data(nullptr);
-
-            // send text message
-            if (get_line_count()) {
-                for (auto i = 0; i < get_line_count(); i++) {
-
-                    sprintf(m_send_buffer, "%s\r\n", get_message_line_text(i).c_str());
-                    send_data(nullptr);
-                }
-            } else {
-                sprintf(m_send_buffer, "%s\r\n", " ");
-                send_data(nullptr);
-            }
-
-            // next goes attachments (if they are)
-            if ((file_buffer = new char[55]) == nullptr)
-                throw SmtpException(SmtpException::BAD_MEMORY_ALLOCC);
-
-            if ((filename = new char[255]) == nullptr)
-                throw SmtpException(SmtpException::BAD_MEMORY_ALLOCC);
-
-            total_size = 0;
-            for (file_id = 0; file_id < m_attachments.size(); file_id++) {
-
-                strcpy(filename, m_attachments[file_id].c_str());
-
-                sprintf(m_send_buffer, "--%s\r\n", BOUNDARY_TEXT);
-                strcat(m_send_buffer, "Content-Type: application/x-msdownload; name=\"");
-                strcat(m_send_buffer, &filename[m_attachments[file_id].find_last_of("\\") + 1]);
-                strcat(m_send_buffer, "\"\r\n");
-                strcat(m_send_buffer, "Content-Transfer-Encoding: base64\r\n");
-                strcat(m_send_buffer, "Content-Disposition: attachment; filename=\"");
-                strcat(m_send_buffer, &filename[m_attachments[file_id].find_last_of("\\") + 1]);
-                strcat(m_send_buffer, "\"\r\n");
-                strcat(m_send_buffer, "\r\n");
-
-                send_data(nullptr);
-
-                // opening the file:
-                hFile = fopen(filename, "rb");
-                if (hFile == nullptr)
-                    throw SmtpException(SmtpException::FILE_NOT_EXIST);
-
-                // checking file size:
-                file_size = 0;
-                while (!feof(hFile))
-                    file_size += fread(file_buffer, sizeof(char), 54, hFile);
-
-                total_size += file_size;
-
-                // sending the file:
-                if (total_size / 1024 > MSG_SIZE_IN_MB * 1024)
+                //Check that any attachments specified can be opened
+                if (!is_valid_attachments_size()) {
                     throw SmtpException(SmtpException::MSG_TOO_BIG);
-                else {
+                }
+
+                // ***** SENDING E-MAIL *****
+
+                // MAIL <SP> FROM:<reverse-path> <CRLF>
+                if (m_mail_from.empty())
+                    throw SmtpException(SmtpException::UNDEF_MAIL_FROM);
+                Command_Entry *pEntry = find_command_entry(command_MAILFROM);
+                snprintf(m_send_buffer, BUFFER_SIZE, "MAIL FROM:<%s>\r\n", m_mail_from.c_str());
+
+                send_data(pEntry);
+                receive_response(pEntry);
+
+                // RCPT <SP> TO:<forward-path> <CRLF>
+                if ((m_recipients.empty()))
+                    throw SmtpException(SmtpException::UNDEF_RECIPIENTS);
+                pEntry = find_command_entry(command_RCPTTO);
+                auto send = [this, pEntry](const Recipients &recipients) {
+                    for (const auto &recipient : recipients) {
+                        snprintf(m_send_buffer, BUFFER_SIZE, "RCPT TO:<%s>\r\n", (recipient.m_mail).c_str());
+                        send_data(pEntry);
+                        receive_response(pEntry);
+                    }
+                };
+                send(m_recipients);
+                send(m_cc_recipients);
+                send(m_bcc_recipients);
+                pEntry = find_command_entry(command_DATA);
+                // DATA <CRLF>
+                snprintf(m_send_buffer, BUFFER_SIZE, "DATA\r\n");
+                send_data(pEntry);
+                receive_response(pEntry);
+
+                pEntry = find_command_entry(command_DATABLOCK);
+                // send header(s)
+                format_header(m_send_buffer);
+                send_data(pEntry);
+
+                // send text message
+                if (!m_message_body.empty()) {
+                    for (const auto &line : m_message_body) {
+                        snprintf(m_send_buffer, BUFFER_SIZE, "%s\r\n", line.c_str());
+                        send_data(pEntry);
+                    }
+                } else {
+                    snprintf(m_send_buffer, BUFFER_SIZE, "%s\r\n", " ");
+                    send_data(pEntry);
+                }
+
+                for (auto file_id = 0; file_id < m_attachments.size(); file_id++) {
+                    std::string filename;
+                    auto pos = m_attachments[file_id].find_last_of('/');
+                    filename = pos == string::npos ? m_attachments[file_id] : m_attachments[file_id].substr(pos + 1);
+                    //RFC 2047 - Use UTF-8 charset,base64 encode.
+                    std::string encoded_filename = "=?UTF-8?B?";
+                    encoded_filename += base64_encode((unsigned char *) filename.c_str(), filename.size());
+                    encoded_filename += "?=";
+
+                    snprintf(m_send_buffer, BUFFER_SIZE, "--%s\r\n", BOUNDARY_TEXT);
+                    strcat(m_send_buffer, "Content-Type: application/x-msdownload; name=\"");
+                    strcat(m_send_buffer, encoded_filename.c_str());
+                    strcat(m_send_buffer, "\"\r\n");
+                    strcat(m_send_buffer, "Content-Transfer-Encoding: base64\r\n");
+                    strcat(m_send_buffer, "Content-Disposition: attachment; filename=\"");
+                    strcat(m_send_buffer, encoded_filename.c_str());
+                    strcat(m_send_buffer, "\"\r\n");
+                    strcat(m_send_buffer, "\r\n");
+
+                    send_data(pEntry);
+
+                    // opening the file:
+                    hFile = fopen(m_attachments[file_id].c_str(), "rb");
+                    if (hFile == nullptr)
+                        throw SmtpException(SmtpException::FILE_NOT_EXIST);
+
+                    // get file size:
+                    fseek(hFile, 0, SEEK_END);
+                    auto file_size = ftell(hFile);
                     fseek(hFile, 0, SEEK_SET);
 
-                    message_part = 0;
-                    for (auto i = 0; i < file_size / 54 + 1; i++) {
+                    auto message_part = 0;
 
+                    for (auto i = 0; i < file_size / 54 + 1; i++) {
                         res = fread(file_buffer, sizeof(char), 54, hFile);
                         message_part ? strcat(m_send_buffer,
                                               base64_encode(reinterpret_cast<const unsigned char *>(file_buffer),
@@ -434,61 +276,39 @@ namespace md
                         message_part += res + 2;
                         if (message_part >= BUFFER_SIZE / 2) { // sending part of the message
                             message_part = 0;
-                            send_data(nullptr); // file_buffer, filename, fclose(hFile);
+                            send_data(pEntry); // FileBuf, filename, fclose(hFile);
                         }
                     }
                     if (message_part) {
-                        send_data(nullptr); // file_buffer, filename, fclose(hFile);
+                        send_data(pEntry); // FileBuf, filename, fclose(hFile);
                     }
+                    fclose(hFile);
                 }
+                delete[] file_buffer;
+
+                // sending last message block (if there is one or more attachments)
+                if (!m_attachments.empty()) {
+                    snprintf(m_send_buffer, BUFFER_SIZE, "\r\n--%s--\r\n", BOUNDARY_TEXT);
+                    send_data(pEntry);
+                }
+
+                pEntry = find_command_entry(command_DATAEND);
+                // <CRLF> . <CRLF>
+                snprintf(m_send_buffer, BUFFER_SIZE, "\r\n.\r\n");
+                send_data(pEntry);
+                receive_response(pEntry);
+            }
+            catch (const SmtpException &exception) {
                 fclose(hFile);
-            }
-            delete[] file_buffer;
-            delete[] filename;
-
-            // sending last message block (if there is one or more attachments)
-            if (!m_attachments.empty()) {
-                sprintf(m_send_buffer, "\r\n--%s--\r\n", BOUNDARY_TEXT);
-                send_data(nullptr);
+                delete[] file_buffer;
+                disconnect_remote_server();
+                throw;
             }
 
-            // <CRLF> . <CRLF>
-            strcpy(m_send_buffer, "\r\n.\r\n");
-            send_data(nullptr);
-            bAccepted = false;
-            do {
-                receive_data(nullptr);
-                switch (smtp_xyz_digits()) {
-                    case 250:
-                        bAccepted = true;
-                        break;
-                    default:
-                        throw SmtpException(SmtpException::MSG_BODY_ERROR);
-                }
-            } while (!bAccepted);
-
-            // ***** CLOSING CONNECTION *****
-
-            // QUIT <CRLF>
-            strcpy(m_send_buffer, "QUIT\r\n");
-            send_data(nullptr);
-            bAccepted = false;
-            do {
-                receive_data(nullptr);
-                switch (smtp_xyz_digits()) {
-                    case 221:
-                        bAccepted = true;
-                        break;
-                    default:
-                        throw SmtpException(SmtpException::COMMAND_QUIT);
-                }
-            } while (!bAccepted);
-
-            close(m_socket);
-            m_socket = NULL;
         }
 
-        SOCKET SmtpServer::connect_remote_server(const char *server, const unsigned short port)
+    SOCKET SmtpServer::connect_remote_server(
+            const char *server, const unsigned short port)
         {
             unsigned short port_number = 0;
             LPSERVENT lpservent;
@@ -589,51 +409,42 @@ namespace md
             std::string to;
             std::string cc;
             std::string bcc;
-            time_t rawtime;
-            struct tm *timeinfo;
+            time_t raw_time;
+            struct tm *time_info;
 
             // date/time check
-            if (time(&rawtime) > 0)
-                timeinfo = localtime(&rawtime);
+            if (time(&raw_time) > 0)
+                time_info = localtime(&raw_time);
             else
                 throw SmtpException(SmtpException::TIME_ERROR);
 
             // check for at least one recipient
-            if (!m_recipients.empty()) {
-                for (auto &m_recipient : m_recipients) {
-                    to += m_recipient.m_name;
-                    to.append("<");
-                    to += m_recipient.m_mail;
-                    to.append(">");
+            auto add_recipients2string = [this](const Recipients &recipients) -> std::string {
+                std::string result;
+                for (auto &recipient : recipients) {
+                    result += recipient.m_name;
+                    result.append("<");
+                    result += recipient.m_mail;
+                    result.append(">");
                 }
+                return result;
+            };
+            if (!m_recipients.empty()) {
+                to += add_recipients2string(m_recipients);
             } else
                 throw SmtpException(SmtpException::UNDEF_RECIPIENTS);
 
-            if (!m_cc_recipients.empty()) {
-                for (auto &m_cc_recipient : m_cc_recipients) {
-                    cc += m_cc_recipient.m_name;
-                    cc.append("<");
-                    cc += m_cc_recipient.m_mail;
-                    cc.append(">");
-                }
-            }
+            cc += add_recipients2string(m_cc_recipients);
+            bcc += add_recipients2string(m_bcc_recipients);
 
-            if (!m_bcc_recipients.empty()) {
-                for (auto &m_bcc_recipient : m_bcc_recipients) {
-                    bcc += m_bcc_recipient.m_name;
-                    bcc.append("<");
-                    bcc += m_bcc_recipient.m_mail;
-                    bcc.append(">");
-                }
-            }
 
             // Date: <SP> <dd> <SP> <mon> <SP> <yy> <SP> <hh> ":" <mm> ":" <ss> <SP> <zone> <CRLF>
-            sprintf(header, "Date: %d %s %d %d:%d:%d\r\n", timeinfo->tm_mday,
-                    month[timeinfo->tm_mon],
-                    timeinfo->tm_year + 1900,
-                    timeinfo->tm_hour,
-                    timeinfo->tm_min,
-                    timeinfo->tm_sec);
+            sprintf(header, "Date: %d %s %d %d:%d:%d\r\n", time_info->tm_mday,
+                    month[time_info->tm_mon],
+                    time_info->tm_year + 1900,
+                    time_info->tm_hour,
+                    time_info->tm_min,
+                    time_info->tm_sec);
 
             // From: <SP> <sender>  <SP> "<" <sender-email> ">" <CRLF>
             if (m_mail_from.empty())
@@ -643,12 +454,10 @@ namespace md
 
             if (!m_name_from.empty())
                 strcat(header, m_name_from.c_str());
+
             strcat(header, " <");
 
-            if (!m_name_from.empty())
-                strcat(header, m_mail_from.c_str());
-            else
-                strcat(header, "mail@domain.com");
+            strcat(header, !m_name_from.empty() ? m_mail_from.c_str() : "mail@domain.com");
 
             strcat(header, ">\r\n");
 
@@ -807,11 +616,9 @@ namespace md
 
             while (true) {
                 FD_ZERO(&fd_write);
-
                 FD_SET(m_socket, &fd_write);
 
-                if ((res = select(
-                        m_socket + 1, nullptr, &fd_write, nullptr, &time)) == SOCKET_ERROR) {
+                if ((res = select(m_socket + 1, nullptr, &fd_write, nullptr, &time)) == SOCKET_ERROR) {
 
                     FD_CLR(m_socket, &fd_write);
                     throw SmtpException(SmtpException::WSA_SELECT);
@@ -828,13 +635,10 @@ namespace md
                         break;
 
                     if (n_left > 0) {
-                        if ((res = static_cast<int>(send(m_socket, &m_send_buffer[idx], n_left, 0))) == SOCKET_ERROR) {
+                        if (send(m_socket, &m_send_buffer[idx], n_left, 0) == SOCKET_ERROR) {
                             FD_CLR(m_socket, &fd_write);
                             throw SmtpException(SmtpException::WSA_SEND);
                         }
-                        if (res == 0)
-                            break;
-
                         n_left -= res;
                         idx += res;
                     }
@@ -983,8 +787,6 @@ namespace md
             add_recipient(list[6], "user");
             set_xmailer(list[7]);
             set_xpriority(static_cast<CSmptXPriority>(std::stoi(list[8])));
-
-
             add_msg_line(list[9]);
 //            mail.add_msg_line("");
 //            mail.add_msg_line("...");
@@ -1251,7 +1053,85 @@ namespace md
 
         void SmtpServer::send_data_SSL(SSL *ssl, Command_Entry *pEntry)
         {
+            int offset = 0;
+            int res = 0;
+            int nLeft = strlen(m_send_buffer);
+            fd_set fdwrite;
+            fd_set fdread;
+            timeval time;
 
+            int write_blocked_on_read = 0;
+
+            time.tv_sec = pEntry->send_timeout;
+            time.tv_usec = 0;
+
+            assert(m_send_buffer);
+
+            if (m_send_buffer == NULL)
+                throw SmtpException(SmtpException::SENDBUF_IS_EMPTY);
+
+            while (nLeft > 0) {
+                FD_ZERO(&fdwrite);
+                FD_ZERO(&fdread);
+
+                FD_SET(m_socket, &fdwrite);
+
+                if (write_blocked_on_read) {
+                    FD_SET(m_socket, &fdread);
+                }
+
+                if ((res = select(m_socket + 1, &fdread, &fdwrite, NULL, &time)) == SOCKET_ERROR) {
+
+                    FD_ZERO(&fdwrite);
+                    FD_ZERO(&fdread);
+                    throw SmtpException(SmtpException::WSA_SELECT);
+                }
+
+                if (!res) {
+                    //timeout
+                    FD_ZERO(&fdwrite);
+                    FD_ZERO(&fdread);
+                    throw SmtpException(SmtpException::SERVER_NOT_RESPONDING);
+                }
+
+                if (FD_ISSET(m_socket, &fdwrite) || (write_blocked_on_read && FD_ISSET(m_socket, &fdread))) {
+                    write_blocked_on_read = 0;
+
+                    /* Try to write */
+                    res = SSL_write(ssl, m_send_buffer + offset, nLeft);
+
+                    switch (SSL_get_error(ssl, res)) {
+                        /* We wrote something*/
+                        case SSL_ERROR_NONE:
+                            nLeft -= res;
+                            offset += res;
+                            break;
+
+                            /* We would have blocked */
+                        case SSL_ERROR_WANT_WRITE:
+                            break;
+
+                            /* We get a WANT_READ if we're
+                               trying to rehandshake and we block on
+                               write during the current connection.
+                               
+                               We need to wait on the socket to be readable
+                               but reinitiate our write when it is */
+                        case SSL_ERROR_WANT_READ:
+                            write_blocked_on_read = 1;
+                            break;
+
+                            /* Some other error */
+                        default:
+                            FD_ZERO(&fdread);
+                            FD_ZERO(&fdwrite);
+                            throw SmtpException(SmtpException::SSL_PROBLEM);
+                    }
+
+                }
+            }
+            FD_ZERO(&fdwrite);
+            FD_ZERO(&fdread);
         }
 
         SMTP_SECURITY_TYPE SmtpServer::get_security_type() const
@@ -1264,11 +1144,15 @@ namespace md
             m_security_type = type;
         }
 
-        bool SmtpServer::ConnectRemoteServer(const char *szServer, const unsigned short nPort_
-                                             , SMTP_SECURITY_TYPE securityType, bool authenticate, const char *login
-                                             , const char *password)
+    bool SmtpServer::connect_remote_server(const std::string &server
+                                           , const unsigned short port
+                                           , SMTP_SECURITY_TYPE security_type
+                                           , bool authenticate
+                                           , const char *login
+                                           , const char *password)
         {
-            unsigned short nPort = 0;
+
+            unsigned short port_num = 0;
             LPSERVENT lpServEnt;
             SOCKADDR_IN sockAddr;
             unsigned long ul = 1;
@@ -1286,22 +1170,23 @@ namespace md
                 if ((m_socket = socket(PF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
                     throw SmtpException(SmtpException::WSA_INVALID_SOCKET);
 
-                if (nPort_ != 0)
-                    nPort = htons(nPort_);
+                if (port != 0)
+                    port_num = htons(port);
                 else {
-                    lpServEnt = getservbyname("mail", 0);
-                    if (lpServEnt == NULL)
-                        nPort = htons(25);
+                    lpServEnt = getservbyname("mail", nullptr);
+                    if (lpServEnt == nullptr)
+                        port_num = htons(25);
                     else
-                        nPort = lpServEnt->s_port;
+                        port_num = lpServEnt->s_port;
                 }
 
                 sockAddr.sin_family = AF_INET;
-                sockAddr.sin_port = nPort;
-                if ((sockAddr.sin_addr.s_addr = inet_addr(szServer)) == INADDR_NONE) {
+                sockAddr.sin_port = port_num;
+                if ((sockAddr.sin_addr.s_addr = inet_addr(server.c_str())) == INADDR_NONE) {
+
                     LPHOSTENT host;
 
-                    host = gethostbyname(szServer);
+                    host = gethostbyname(server.c_str());
                     if (host)
                         memcpy(&sockAddr.sin_addr, host->h_addr_list[0], host->h_length);
                     else {
@@ -1351,7 +1236,10 @@ namespace md
                 FD_CLR(m_socket, &fdwrite);
                 FD_CLR(m_socket, &fdexcept);
 
-                if (securityType != DO_NOT_SET) set_security_type(securityType);
+                if (security_type != DO_NOT_SET) {
+                    set_security_type(security_type);
+                }
+
                 if (get_security_type() == USE_TLS || get_security_type() == USE_SSL) {
                     init_openSSL();
                     if (get_security_type() == USE_SSL) {
@@ -1439,29 +1327,29 @@ namespace md
                         //should encode as dGltIGI5MTNhNjAyYzdlZGE3YTQ5NWI0ZTZlNzMzNGQzODkw
                         /////////////////////////////////////////////////////////////////////
 
-                        unsigned char *ustrChallenge = char2uchar(decoded_challenge.c_str());
-                        unsigned char *ustrPassword = char2uchar(m_password.c_str());
-                        if (!ustrChallenge || !ustrPassword)
+                        unsigned char *ustr_challenge = char2uchar(decoded_challenge.c_str());
+                        unsigned char *ustr_password = char2uchar(m_password.c_str());
+                        if (!ustr_challenge || !ustr_password)
                             throw SmtpException(SmtpException::BAD_LOGIN_PASS);
 
-                        // if ustrPassword is longer than 64 bytes reset it to ustrPassword=MD5(ustrPassword)
+                        // if ustr_password is longer than 64 bytes reset it to ustr_password=MD5(ustr_password)
                         int passwordLength = m_password.size();
                         if (passwordLength > 64) {
                             MD5 md5password;
-                            md5password.update(ustrPassword, passwordLength);
+                            md5password.update(ustr_password, passwordLength);
                             md5password.finalize();
-                            ustrPassword = md5password.raw_digest();
+                            ustr_password = md5password.raw_digest();
                             passwordLength = 16;
                         }
 
-                        //Storing ustrPassword in pads
+                        //Storing ustr_password in pads
                         unsigned char ipad[65], opad[65];
                         memset(ipad, 0, 64);
                         memset(opad, 0, 64);
-                        memcpy(ipad, ustrPassword, passwordLength);
-                        memcpy(opad, ustrPassword, passwordLength);
+                        memcpy(ipad, ustr_password, passwordLength);
+                        memcpy(opad, ustr_password, passwordLength);
 
-                        // XOR ustrPassword with ipad and opad values
+                        // XOR ustr_password with ipad and opad values
                         for (int i = 0; i < 64; i++) {
                             ipad[i] ^= 0x36;
                             opad[i] ^= 0x5c;
@@ -1470,7 +1358,7 @@ namespace md
                         //perform inner MD5
                         MD5 md5pass1;
                         md5pass1.update(ipad, 64);
-                        md5pass1.update(ustrChallenge, decoded_challenge.size());
+                        md5pass1.update(ustr_challenge, decoded_challenge.size());
                         md5pass1.finalize();
                         unsigned char *ustrResult = md5pass1.raw_digest();
 
@@ -1481,8 +1369,8 @@ namespace md
                         md5pass2.finalize();
                         decoded_challenge = md5pass2.hex_digest();
 
-                        delete[] ustrChallenge;
-                        delete[] ustrPassword;
+                        delete[] ustr_challenge;
+                        delete[] ustr_password;
                         delete[] ustrResult;
 
                         decoded_challenge = m_login + " " + decoded_challenge;
@@ -1515,7 +1403,7 @@ namespace md
                         if (find < 0)
                             throw SmtpException(SmtpException::BAD_DIGEST_RESPONSE);
                         std::string nonce = decoded_challenge.substr(find + 7);
-                        find = nonce.find("\"");
+                        find = nonce.find('\"');
                         if (find < 0)
                             throw SmtpException(SmtpException::BAD_DIGEST_RESPONSE);
                         nonce = nonce.substr(0, find);
@@ -1525,7 +1413,7 @@ namespace md
                         find = decoded_challenge.find("realm");
                         if (find >= 0) {
                             realm = decoded_challenge.substr(find + 7);
-                            find = realm.find("\"");
+                            find = realm.find('\"');
                             if (find < 0)
                                 throw SmtpException(SmtpException::BAD_DIGEST_RESPONSE);
                             realm = realm.substr(0, find);
@@ -1681,15 +1569,16 @@ namespace md
                         pEntry = find_command_entry(command_PASSWORD);
                         send_data(pEntry);
                         receive_response(pEntry);
-                    } else throw SmtpException(SmtpException::LOGIN_NOT_SUPPORTED);
+                    } else
+                        throw SmtpException(SmtpException::LOGIN_NOT_SUPPORTED);
                 }
             }
             catch (const SmtpException &) {
                 if (m_receive_buffer[0] == '5' && m_receive_buffer[1] == '3' && m_receive_buffer[2] == '0')
                     m_bConnected = false;
+
                 disconnect_remote_server();
                 throw;
-                return false;
             }
 
             return true;
@@ -1699,7 +1588,7 @@ namespace md
         {
             auto pEntry = find_command_entry(command_EHLO);
             snprintf(m_send_buffer, BUFFER_SIZE, "EHLO %s\r\n",
-                     get_local_hostname() != NULL ? m_local_hostname.c_str() : "domain");
+                     get_local_hostname() != nullptr ? m_local_hostname.c_str() : "domain");
             send_data(pEntry);
             receive_response(pEntry);
             m_bConnected = true;
@@ -1741,13 +1630,29 @@ namespace md
             m_socket = INVALID_SOCKET;
         }
 
-        void SmtpServer::clear_message()
+    bool SmtpServer::is_valid_attachments_size()
         {
-            delete_recipients();
-            delete_BCC_recipients();
-            delete_CC_recipients();
-            delete_attachments();
-            delete_message_lines();
+            auto total_size = 0;
+            for (unsigned int file_id = 0; file_id < m_attachments.size(); file_id++) {
+
+                // opening the file:
+                auto hFile = fopen(m_attachments[file_id].c_str(), "rb");
+                if (hFile == nullptr) {
+                    throw SmtpException(SmtpException::FILE_NOT_EXIST);
+                }
+
+                // checking file size:
+                fseek(hFile, 0, SEEK_END);
+                auto file_size = ftell(hFile);
+                total_size += file_size;
+
+                // sending the file:
+                if (total_size / 1024 > MSG_SIZE_IN_MB * 1024) {
+                    fclose(hFile);
+                    return false;
+                }
+                fclose(hFile);
+            }
+            return true;
         }
     }
-}

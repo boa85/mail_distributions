@@ -87,16 +87,12 @@ namespace md
 
         Command_Entry *find_command_entry(SMTP_COMMAND command)
         {
-            Command_Entry *pEntry = nullptr;
             for (auto &item : command_list) {
-
                 if (item.command == command) {
-                    pEntry = &item;
-                    break;
+                    return &item;
                 }
             }
-            assert(pEntry != nullptr);
-            return pEntry;
+            return nullptr;
         }
 
         bool is_keyword_supported(const char *response, const char *keyword)
@@ -164,7 +160,7 @@ namespace md
                 case SmtpException::UNDEF_SUBJECT:
                     return "Undefined message subject";
                 case SmtpException::UNDEF_RECIPIENTS:
-                    return "Undefined at least one reciepent";
+                    return "Undefined at least one recipient";
                 case SmtpException::UNDEF_RECIPIENT_MAIL:
                     return "Undefined recipent mail";
                 case SmtpException::UNDEF_LOGIN:

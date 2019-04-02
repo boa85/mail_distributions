@@ -220,12 +220,12 @@ namespace md
 
             SOCKET connect_remote_server(const char *server, unsigned short port = 0);
 
-            bool ConnectRemoteServer(const char *szServer
-                                     , const unsigned short nPort_ = 0
-                                     , SMTP_SECURITY_TYPE securityType = DO_NOT_SET
-                                     , bool authenticate = true
-                                     , const char *login = NULL
-                                     , const char *password = NULL);
+            bool connect_remote_server(const std::string &server
+                                       , unsigned short port = 0
+                                       , SMTP_SECURITY_TYPE security_type = DO_NOT_SET
+                                       , bool authenticate = true
+                                       , const char *login = nullptr
+                                       , const char *password = nullptr);
 
 
             void receive_response(Command_Entry *pEntry);
@@ -242,6 +242,8 @@ namespace md
 
 
             void disconnect_remote_server();
+
+            bool is_valid_attachments_size();
         };
 
 
