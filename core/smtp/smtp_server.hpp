@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../tools/service/service.hpp"
+
 #ifndef __CSMTP_H__
 #define __CSMTP_H__
 
@@ -10,6 +11,7 @@
 #include <assert.h>
 
 #ifdef __linux__
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -36,32 +38,32 @@
 typedef unsigned short WORD;
 typedef int SOCKET;
 typedef struct sockaddr_in SOCKADDR_IN;
-typedef struct hostent* LPHOSTENT;
-typedef struct servent* LPSERVENT;
-typedef struct in_addr* LPIN_ADDR;
-typedef struct sockaddr* LPSOCKADDR;
+typedef struct hostent *LPHOSTENT;
+typedef struct servent *LPSERVENT;
+typedef struct in_addr *LPIN_ADDR;
+typedef struct sockaddr *LPSOCKADDR;
 
 #define LINUX
 #else
 #include <winsock2.h>
-	#include <time.h>
-	#pragma comment(lib, "ws2_32.lib")
+#include <time.h>
+#pragma comment(lib, "ws2_32.lib")
 
-	//Add "openssl-0.9.8l\inc32" to Additional Include Directories
-	#include "openssl\ssl.h"
+//Add "openssl-0.9.8l\inc32" to Additional Include Directories
+#include "openssl\ssl.h"
 
-	#if _MSC_VER < 1400
-		#define snprintf _snprintf
-	#else
-		#define snprintf sprintf_s
-	#endif
+#if _MSC_VER < 1400
+#define snprintf _snprintf
+#else
+#define snprintf sprintf_s
+#endif
 #endif
 
 
-#define TIME_IN_SEC		3*60	// how long client will wait for server response in non-blocking mode
-#define BUFFER_SIZE		10240	// SendData and RecvData buffers sizes
-#define MSG_SIZE_IN_MB	25		// the maximum size of the message with all attachments
-#define COUNTER_VALUE	100		// how many times program will try to receive data
+#define TIME_IN_SEC        3*60    // how long client will wait for server response in non-blocking mode
+#define BUFFER_SIZE        10240    // send_data and RecvData buffers sizes
+#define MSG_SIZE_IN_MB    25        // the maximum size of the message with all attachments
+#define COUNTER_VALUE    100        // how many times program will try to receive data
 
 const char BOUNDARY_TEXT[] = "__MESSAGE__ID__54yg6f6h6y456345";
 
@@ -72,7 +74,7 @@ enum CSmptXPriority
     XPRIORITY_LOW = 4
 };
 
-class ECSmtp
+class SmtpException : public std::exception
 {
 public:
     enum CSmtpError
@@ -129,12 +131,19 @@ public:
         STARTTLS_NOT_SUPPORTED,
         LOGIN_NOT_SUPPORTED
     };
-    ECSmtp(CSmtpError err_) : ErrorCode(err_) {}
-    CSmtpError GetErrorNum(void) const {return ErrorCode;}
-    std::string GetErrorText(void) const;
+
+    explicit SmtpException(CSmtpError error) : m_error_code(error)
+    {}
+
+    ~SmtpException() override = default;
+
+    const char *what() const noexcept override;
+
+
+    std::string get_error_message() const;
 
 private:
-    CSmtpError ErrorCode;
+    CSmtpError m_error_code;
 };
 
 enum SMTP_COMMAND
@@ -168,126 +177,167 @@ enum SMTP_SECURITY_TYPE
 
 typedef struct tagCommand_Entry
 {
-    SMTP_COMMAND       command;
-    int                send_timeout;	 // 0 means no send is required
-    int                recv_timeout;	 // 0 means no recv is required
-    int                valid_reply_code; // 0 means no recv is required, so no reply code
-    ECSmtp::CSmtpError error;
-}Command_Entry;
+    SMTP_COMMAND command;
+    int send_timeout;     // 0 means no send is required
+    int recv_timeout;     // 0 means no recv is required
+    int valid_reply_code; // 0 means no recv is required, so no reply code
+    SmtpException::CSmtpError error;
+} Command_Entry;
 
-class CSmtp
+class SmtpServer
 {
-public:
-    CSmtp();
-    virtual ~CSmtp();
+    std::string m_local_hostname;
+    std::string m_mail_from;
+    std::string m_name_from;
+    std::string m_subject;
+    std::string m_charset;
+    std::string m_xmailer;
+    std::string m_reply_to;
+    bool m_is_read_receipt;
+    std::string m_login;
+    std::string m_password;
+    std::string m_smtp_server_name;
+    unsigned short m_smtp_server_port;
+    bool m_is_authenticate;
+    CSmptXPriority m_xpriority;
+    char *m_send_buffer;
+    char *m_receive_buffer;
 
-    void AddRecipient(const char *email, const char *name=NULL);
-    void AddBCCRecipient(const char *email, const char *name=NULL);
-    void AddCCRecipient(const char *email, const char *name=NULL);
-    void AddAttachment(const char *path);
-    void AddMsgLine(const char* text);
-    void ClearMessage();
-    bool ConnectRemoteServer(const char* szServer, const unsigned short nPort_=0,
-            SMTP_SECURITY_TYPE securityType=DO_NOT_SET,
-            bool authenticate=true, const char* login=NULL,
-            const char* password=NULL);
-    void DisconnectRemoteServer();
-    void DelRecipients(void);
-    void DelBCCRecipients(void);
-    void DelCCRecipients(void);
-    void DelAttachments(void);
-    void DelMsgLines(void);
-    void DelMsgLine(unsigned int line);
-    void ModMsgLine(unsigned int line,const char* text);
-    unsigned int GetBCCRecipientCount() const;
-    unsigned int GetCCRecipientCount() const;
-    unsigned int GetRecipientCount() const;
-    const char* GetLocalHostIP() const;
-    const char* GetLocalHostName();
-    const char* GetMsgLineText(unsigned int line) const;
-    unsigned int GetMsgLines(void) const;
-    const char* GetReplyTo() const;
-    const char* GetMailFrom() const;
-    const char* GetSenderName() const;
-    const char* GetSubject() const;
-    const char* GetXMailer() const;
-    CSmptXPriority GetXPriority() const;
-    void Send();
-    void SetCharSet(const char *sCharSet);
-    void SetLocalHostName(const char *sLocalHostName);
-    void SetSubject(const char*);
-    void SetSenderName(const char*);
-    void SetSenderMail(const char*);
-    void SetReplyTo(const char*);
-    void SetReadReceipt(bool requestReceipt=true);
-    void SetXMailer(const char*);
-    void SetLogin(const char*);
-    void SetPassword(const char*);
-    void SetXPriority(CSmptXPriority);
-    void SetSMTPServer(const char* server, const unsigned short port=0, bool authenticate=true);
-
-private:
-    std::string m_sLocalHostName;
-    std::string m_sMailFrom;
-    std::string m_sNameFrom;
-    std::string m_sSubject;
-    std::string m_sCharSet;
-    std::string m_sXMailer;
-    std::string m_sReplyTo;
-    bool m_bReadReceipt;
-    std::string m_sIPAddr;
-    std::string m_sLogin;
-    std::string m_sPassword;
-    std::string m_sSMTPSrvName;
-    unsigned short m_iSMTPSrvPort;
-    bool m_bAuthenticate;
-    CSmptXPriority m_iXPriority;
-    char *SendBuf;
-    char *RecvBuf;
-
-    SOCKET hSocket;
+    SOCKET m_socket;
     bool m_bConnected;
 
     struct Recipient
     {
-        std::string Name;
-        std::string Mail;
+        std::string m_name;
+        std::string m_mail;
     };
 
-    std::vector<Recipient> Recipients;
-    std::vector<Recipient> CCRecipients;
-    std::vector<Recipient> BCCRecipients;
-    std::vector<std::string> Attachments;
-    std::vector<std::string> MsgBody;
+    std::vector<Recipient> m_recipients;
+    std::vector<Recipient> m_cc_recipients;
+    std::vector<Recipient> m_bcc_recipients;
+    std::vector<std::string> m_attachments;
+    std::vector<std::string> m_message_body;
 
-    void ReceiveData(Command_Entry* pEntry);
-    void SendData(Command_Entry* pEntry);
-    void FormatHeader(char*);
-    int SmtpXYZdigits();
-    void SayHello();
-    void SayQuit();
+    SMTP_SECURITY_TYPE m_type;
+    SSL_CTX *m_ctx;
+    SSL *m_ssl;
 
-// TLS/SSL extension
 public:
-    SMTP_SECURITY_TYPE GetSecurityType() const
-    { return m_type; }
-    void SetSecurityType(SMTP_SECURITY_TYPE type)
-    { m_type = type; }
+    SmtpServer();
+
+    virtual ~SmtpServer();
+
+    void add_recipient(const char *email, const char *name = nullptr);
+
+    void add_bcc_recipient(const char *email, const char *name = nullptr);
+
+    void add_cc_recipient(const char *email, const char *name = nullptr);
+
+    void add_attachment(const char *path);
+
+    void add_message_line(const char *text);
+
+    void clear_message();
+
+    bool connect_remote_server(const char *szServer, unsigned short nPort_ = 0
+                               , SMTP_SECURITY_TYPE securityType = DO_NOT_SET
+                               , bool authenticate = true
+                               , const char *login = nullptr
+                               , const char *password = nullptr);
+
+    void disconnect_remote_server();
+
+    void delete_recipients();
+
+    void delete_bcc_recipients();
+
+    void delete_cc_recipients();
+
+    void delete_attachments();
+
+    void delete_message_lines();
+
+    void delete_message_line(unsigned int line);
+
+    void modify_message_line(unsigned int line, const char *text);
+
+    const char *get_local_hostname();
+
+    const char *get_message_line_text(unsigned int line) const;
+
+    unsigned int get_gessage_line_count() const;
+
+    void send_mail();
+
+    void set_charset(const char *charset);
+
+    void set_subject(const char *subject);
+
+    void set_sender_name(const char *name);
+
+    void set_sender_mail(const char *email);
+
+    void set_reply_to(const char *reply_to);
+
+    void set_read_receipt(bool request_receipt = true);
+
+    void set_xmailer(const char *xmailer);
+
+    void set_login(const char *login);
+
+    void set_password(const char *password);
+
+    void set_xpriority(CSmptXPriority priority);
+
+    void init_smtp_server(const char *server_name, unsigned short server_port = 0, bool authenticate = true);
+
+    // TLS/SSL extension
+    SMTP_SECURITY_TYPE get_security_type() const
+    {
+        return m_type;
+    }
+
+    void set_security_type(SMTP_SECURITY_TYPE type)
+    {
+        m_type = type;
+    }
+
     bool m_bHTML;
 
 private:
-    SMTP_SECURITY_TYPE m_type;
-    SSL_CTX*      m_ctx;
-    SSL*          m_ssl;
 
-    void ReceiveResponse(Command_Entry* pEntry);
-    void InitOpenSSL();
-    void OpenSSLConnect();
-    void CleanupOpenSSL();
-    void ReceiveData_SSL(SSL* ssl, Command_Entry* pEntry);
-    void SendData_SSL(SSL* ssl, Command_Entry* pEntry);
-    void StartTls();
+    void receive_data(Command_Entry *pEntry);
+
+    void send_data(Command_Entry *pEntry);
+
+    void format_header(char *);
+
+    int SmtpXYZdigits();
+
+    void say_hello();
+
+    void say_quit();
+
+
+    void receive_response(Command_Entry *pEntry);
+
+    void init_open_ssl();
+
+    void open_ssl_connect();
+
+    void cleanup_open_ssl();
+
+    void receive_data_SSL(SSL *ssl, Command_Entry *pEntry);
+
+    void send_data_ssl(SSL *ssl, Command_Entry *pEntry);
+
+    void start_tls();
 };
 
+Command_Entry *FindCommandEntry(SMTP_COMMAND command);
 
+// A simple string match
+bool IsKeywordSupported(const char *response, const char *keyword);
+
+unsigned char *CharToUnsignedChar(const char *strIn);
 #endif // __CSMTP_H__

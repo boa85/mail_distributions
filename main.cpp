@@ -4,7 +4,8 @@
 #include "core/smtp/smtp_server.hpp"
 #include "core/database/pg_backend.hpp"
 #include "tools/args_parser/argument_parser.hpp"
-
+#include <chrono>
+#include <ctime>
 using namespace md::db;
 //using namespace md::smtp;
 using namespace md::argument_parser;
@@ -75,13 +76,13 @@ int main(int argc, char const *argv[])
 
     try
     {
-        CSmtp mail;
+        SmtpServer mail;
 
 #define test_gmail_tls
 
 #if defined(test_gmail_tls)
-        mail.SetSMTPServer("smtp.yandex.ru",587);
-        mail.SetSecurityType(USE_TLS);
+        mail.init_smtp_server("smtp.yandex.ru", 587);
+        mail.set_security_type(USE_TLS);
 #elif defined(test_gmail_ssl)
         mail.SetSMTPServer("smtp.gmail.com",465);
 		mail.SetSecurityType(USE_SSL);
@@ -96,33 +97,44 @@ int main(int argc, char const *argv[])
 		mail.SetSecurityType(USE_SSL);
 #endif
 
-        mail.SetLogin("belaev.oa@yandex.ru");
-        mail.SetPassword("vusvifwyflgcxlvo");
-        mail.SetSenderName("User");
-        mail.SetSenderMail("belaev.oa@yandex.ru");
-        mail.SetReplyTo("belaev.oa@yandex.ru");
-        mail.SetSubject("The message");
-        mail.AddRecipient("boa.freelance@gmail.com");
-        mail.SetXPriority(XPRIORITY_NORMAL);
-        mail.SetXMailer("The Bat! (v3.02) Professional");
-        mail.AddMsgLine("Hello,");
-        mail.AddMsgLine("I think this shit works.");
-        mail.AddMsgLine("...");
-        mail.AddMsgLine("How are you today?");
-        mail.AddMsgLine("");
-        mail.AddMsgLine("Regards");
-        mail.ModMsgLine(5,"regards");
-        mail.DelMsgLine(2);
-        mail.AddMsgLine("User");
-        mail.Send();
+
+        std::vector<std::string> v = {"test", "jan", "febr", "marz", "apr", "mai"};
+
+        std::chrono::time_point<std::chrono::system_clock> start, end;
+        start = std::chrono::system_clock::now();
+        for (auto i = 0; i < 1; ++i) {
+            mail.set_login("belaev.oa@yandex.ru");
+            mail.set_password("vusvifwyflgcxlvo");
+            mail.set_sender_name("User");
+            mail.set_sender_mail("belaev.oa@yandex.ru");
+            mail.set_reply_to("belaev.oa@yandex.ru");
+            mail.set_subject("The message");
+            mail.add_recipient("belaev.oa@yandex.ru");
+            mail.set_xpriority(XPRIORITY_NORMAL);
+            mail.set_xmailer("The Bat! (v3.02) Professional");
+            mail.add_message_line(v[i%6].c_str());
+            mail.add_message_line("I think this shit works.");
+
+            mail.add_message_line("User");
+            mail.send_mail();
+        }
+
+        end = std::chrono::system_clock::now();
+
+        int elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>
+                (end-start).count();
+        std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+
+        std::cout << "Вычисления закончены в " << std::ctime(&end_time)
+                  << "Время выполнения: " << elapsed_seconds << "s\n";
     }
-    catch(ECSmtp e)
+    catch(SmtpException e)
     {
-        std::cout << "Error: " << e.GetErrorText().c_str() << ".\n";
+        std::cout << "Error: " << e.get_error_message().c_str() << ".\n";
         bError = true;
     }
     if(!bError)
-        std::cout << "Mail was send successfully.\n";
+        std::cout << "m_mail was send successfully.\n";
     return 0;
 /*
     try {
