@@ -32,7 +32,7 @@ set(SOURCE_FILES
         tools/args_parser/argument_parser.cpp
         tools/args_parser/argument_parser.hpp
         core/smtp/md_5.cpp
-        core/smtp/md_5.hpp)
+        core/smtp/md_5.hpp core/smtp/smtp_exception.cpp core/smtp/smtp_exception.hpp core/smtp/smtp_common.cpp core/smtp/smtp_common.hpp)
 add_executable(mail_distribution ${SOURCE_FILES} main.cpp)
 target_link_libraries(mail_distribution
         ${Boost_LIBRARIES}

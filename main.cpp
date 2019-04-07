@@ -7,7 +7,7 @@
 #include <chrono>
 #include <ctime>
 using namespace md::db;
-//using namespace md::smtp;
+using namespace md::smtp;
 using namespace md::argument_parser;
 
 void send_mail(const StringList &list, const std::string &smtp_host, unsigned smtp_port)
