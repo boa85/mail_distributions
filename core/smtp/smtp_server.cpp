@@ -775,7 +775,7 @@ namespace md::smtp
         void SmtpServer::init(const StringList &list, const std::string &smtp_host, unsigned smtp_port)
         {
 
-            set_smtp_server(smtp_host, smtp_port, false);
+            set_smtp_server(smtp_host, smtp_port, true);
 
             set_login(list[0]);
             set_password(list[1]);

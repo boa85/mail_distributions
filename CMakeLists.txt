@@ -3,6 +3,13 @@ project(mail_distribution)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "-O0 -pedantic-errors -Wextra -Wall -Winit-self -Wold-style-cast -Woverloaded-virtual -Wuninitialized -Wmissing-declarations -Wno-ignored-qualifiers -Wno-unused-parameter")
+find_package(OpenSSL REQUIRED)
+if (OPENSSL_FOUND)
+    set(OPENSSL_USE_STATIC_LIBS TRUE)
+else ()
+    message(FATAL_ERROR "Could not find openssl!")
+endif ()
+
 find_package(Boost 1.58.0 COMPONENTS system filesystem program_options signals date_time thread regex serialization)
 if (NOT Boost_FOUND)
     message(FATAL_ERROR "Could not find boost!")
@@ -23,6 +30,11 @@ set(SOURCE_FILES
         tools/service/service.cpp
         tools/service/service.hpp
         tools/args_parser/argument_parser.cpp
-        tools/args_parser/argument_parser.hpp)
+        tools/args_parser/argument_parser.hpp
+        core/smtp/md_5.cpp
+        core/smtp/md_5.hpp)
 add_executable(mail_distribution ${SOURCE_FILES} main.cpp)
-target_link_libraries(mail_distribution  ${Boost_LIBRARIES}  ${PostgreSQL_LIBRARIES})
+target_link_libraries(mail_distribution
+        ${Boost_LIBRARIES}
+        ${PostgreSQL_LIBRARIES}
+        ${OPENSSL_LIBRARIES})
