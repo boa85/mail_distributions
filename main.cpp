@@ -14,6 +14,7 @@ void send_mail(const StringList &list, const std::string &smtp_host, unsigned sm
     /*if (list.size() != 10) {
         throw std::logic_error("invalid database record");
     }*/
+/*
     try {
 //        SmtpServer mail;
 //        mail.init(list, smtp_host, smtp_port);
@@ -23,6 +24,7 @@ void send_mail(const StringList &list, const std::string &smtp_host, unsigned sm
         write_sys_log(e.get_error_message());
         std::cout << "Error: " << e.get_error_message().c_str() << ".\n";
     }
+*/
 }
 
 void
@@ -93,11 +95,11 @@ int main(int argc, char const *argv[])
         }
         return 0;
     }
-    catch (SmtpException &e) {
+   /* catch (SmtpException &e) {
         openlog("mail_distribution", LOG_PERROR | LOG_PID, LOG_USER);
-        syslog(LOG_NOTICE, "error %s", e.get_error_message().c_str());
+//        syslog(LOG_NOTICE, "error %s", e.get_error_message().c_str());
         closelog();
-    }
+    }*/
     catch (std::exception &e) {
         openlog("mail_distribution", LOG_PERROR | LOG_PID, LOG_USER);
         syslog(LOG_NOTICE, "error %s", e.what());
