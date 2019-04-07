@@ -6,7 +6,7 @@
 #include "tools/args_parser/argument_parser.hpp"
 
 using namespace md::db;
-using namespace md::smtp;
+//using namespace md::smtp;
 using namespace md::argument_parser;
 
 void send_mail(const StringList &list, const std::string &smtp_host, unsigned smtp_port)
@@ -71,6 +71,60 @@ test_send_mail(const PgbPtr &pgBackend, const std::string &smtp_host, unsigned s
 int main(int argc, char const *argv[])
 {
 
+    bool bError = false;
+
+    try
+    {
+        CSmtp mail;
+
+#define test_gmail_tls
+
+#if defined(test_gmail_tls)
+        mail.SetSMTPServer("smtp.yandex.ru",587);
+        mail.SetSecurityType(USE_TLS);
+#elif defined(test_gmail_ssl)
+        mail.SetSMTPServer("smtp.gmail.com",465);
+		mail.SetSecurityType(USE_SSL);
+#elif defined(test_hotmail_TLS)
+		mail.SetSMTPServer("smtp.live.com",25);
+		mail.SetSecurityType(USE_TLS);
+#elif defined(test_aol_tls)
+		mail.SetSMTPServer("smtp.aol.com",587);
+		mail.SetSecurityType(USE_TLS);
+#elif defined(test_yahoo_ssl)
+		mail.SetSMTPServer("plus.smtp.mail.yahoo.com",465);
+		mail.SetSecurityType(USE_SSL);
+#endif
+
+        mail.SetLogin("belaev.oa@yandex.ru");
+        mail.SetPassword("vusvifwyflgcxlvo");
+        mail.SetSenderName("User");
+        mail.SetSenderMail("belaev.oa@yandex.ru");
+        mail.SetReplyTo("belaev.oa@yandex.ru");
+        mail.SetSubject("The message");
+        mail.AddRecipient("boa.freelance@gmail.com");
+        mail.SetXPriority(XPRIORITY_NORMAL);
+        mail.SetXMailer("The Bat! (v3.02) Professional");
+        mail.AddMsgLine("Hello,");
+        mail.AddMsgLine("I think this shit works.");
+        mail.AddMsgLine("...");
+        mail.AddMsgLine("How are you today?");
+        mail.AddMsgLine("");
+        mail.AddMsgLine("Regards");
+        mail.ModMsgLine(5,"regards");
+        mail.DelMsgLine(2);
+        mail.AddMsgLine("User");
+        mail.Send();
+    }
+    catch(ECSmtp e)
+    {
+        std::cout << "Error: " << e.GetErrorText().c_str() << ".\n";
+        bError = true;
+    }
+    if(!bError)
+        std::cout << "Mail was send successfully.\n";
+    return 0;
+/*
     try {
         auto parser = std::make_shared<ArgumentParser>();
         parser->start_parsing(argc, argv);
@@ -95,16 +149,19 @@ int main(int argc, char const *argv[])
         }
         return 0;
     }
-   /* catch (SmtpException &e) {
+   */
+/* catch (SmtpException &e) {
         openlog("mail_distribution", LOG_PERROR | LOG_PID, LOG_USER);
 //        syslog(LOG_NOTICE, "error %s", e.get_error_message().c_str());
         closelog();
-    }*/
+    }*//*
+
     catch (std::exception &e) {
         openlog("mail_distribution", LOG_PERROR | LOG_PID, LOG_USER);
         syslog(LOG_NOTICE, "error %s", e.what());
         closelog();
         std::cerr << e.what() << std::endl;
     }
+*/
 
 }
