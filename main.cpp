@@ -15,9 +15,9 @@ void send_mail(const StringList &list, const std::string &smtp_host, unsigned sm
         throw std::logic_error("invalid database record");
     }*/
     try {
-        SmtpServer mail;
-        mail.init(list, smtp_host, smtp_port);
-        mail.send_mail();
+//        SmtpServer mail;
+//        mail.init(list, smtp_host, smtp_port);
+//        mail.send_mail();
     }
     catch (SmtpException &e) {
         write_sys_log(e.get_error_message());
