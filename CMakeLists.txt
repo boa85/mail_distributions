@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(mail_distribution)
+project(mail_distributions)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "-O0 -pedantic-errors -Wextra -Wall -Winit-self -Wold-style-cast -Woverloaded-virtual -Wuninitialized -Wmissing-declarations -Wno-ignored-qualifiers -Wno-unused-parameter")
@@ -23,18 +23,23 @@ set(SOURCE_FILES
         core/database/pg_backend.hpp
         core/database/pg_connection.cpp
         core/database/pg_connection.hpp
+        core/smtp/md_5.cpp
+        core/smtp/md_5.hpp
+        core/smtp/smtp_common.cpp
+        core/smtp/smtp_common.hpp
+        core/smtp/smtp_exception.cpp
+        core/smtp/smtp_exception.hpp
         core/smtp/smtp_server.cpp
         core/smtp/smtp_server.hpp
+        tools/args_parser/argument_parser.cpp
+        tools/args_parser/argument_parser.hpp
         tools/service/base_64.cpp
         tools/service/base_64.hpp
         tools/service/service.cpp
         tools/service/service.hpp
-        tools/args_parser/argument_parser.cpp
-        tools/args_parser/argument_parser.hpp
-        core/smtp/md_5.cpp
-        core/smtp/md_5.hpp core/smtp/smtp_exception.cpp core/smtp/smtp_exception.hpp core/smtp/smtp_common.cpp core/smtp/smtp_common.hpp)
-add_executable(mail_distribution ${SOURCE_FILES} main.cpp)
-target_link_libraries(mail_distribution
+        )
+add_executable(mail_distributions ${SOURCE_FILES})
+target_link_libraries(mail_distributions
         ${Boost_LIBRARIES}
         ${PostgreSQL_LIBRARIES}
         ${OPENSSL_LIBRARIES})
