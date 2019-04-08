@@ -48,7 +48,7 @@ namespace md
             std::vector<std::string> m_attachments;
             std::vector<std::string> m_message_body;
 
-            SMTP_SECURITY_TYPE m_type;
+            SMTP_SECURITY_TYPE m_security_type;
             SSL_CTX *m_ctx;
             SSL *m_ssl;
 
@@ -124,15 +124,17 @@ namespace md
             // TLS/SSL extension
             SMTP_SECURITY_TYPE get_security_type() const
             {
-                return m_type;
+                return m_security_type;
             }
 
             void set_security_type(SMTP_SECURITY_TYPE type)
             {
-                m_type = type;
+                m_security_type = type;
             }
 
             bool m_bHTML;
+
+            void init(const StringList &list, const std::string &smtp_hostname, unsigned int smtp_port);
 
         private:
 

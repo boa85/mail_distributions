@@ -35,7 +35,7 @@ namespace md
             if ((m_send_buffer = new char[BUFFER_SIZE]) == nullptr)
                 throw SmtpException(SmtpException::LACK_OF_MEMORY);
 
-            m_type = NO_SECURITY;
+            m_security_type = NO_SECURITY;
             m_ctx = nullptr;
             m_ssl = nullptr;
             m_bHTML = false;
@@ -196,8 +196,14 @@ namespace md
 
             // connecting to remote host if not already connected:
             if (m_socket == INVALID_SOCKET) {
-                if (!connect_remote_server(m_smtp_server_name.c_str(), m_smtp_server_port, m_type, m_is_authenticate))
+                if (!connect_remote_server(
+                        m_smtp_server_name.c_str()
+                        , m_smtp_server_port
+                        , m_security_type
+                        , m_is_authenticate)) {
+
                     throw SmtpException(SmtpException::WSA_INVALID_SOCKET);
+                }
             }
 
             try {
@@ -1526,6 +1532,11 @@ namespace md
                 EVP_cleanup();
                 CRYPTO_cleanup_all_ex_data();
             }
+        }
+
+        void SmtpServer::init(const StringList &list, const string &smtp_hostname, unsigned int smtp_port)
+        {
+
         }
     }//namespace smtp
 }//namespace md
