@@ -45,7 +45,7 @@ namespace md
 
         };
 
-        using PgbPtr = std::shared_ptr<PGBackend>;
+        using PGBackendPtr = std::shared_ptr<PGBackend>;
     }// namespace db
 }// namespace md
 

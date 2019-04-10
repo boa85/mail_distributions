@@ -115,31 +115,81 @@ namespace md
 
         struct ServerConfig : Config
         {
-            ServerConfig() : Config(), m_port(25)
-            {
-                m_type = CONFIG_TYPE::SERVER;
-            }
-
-            explicit ServerConfig(const KeyMap &keyMap) : Config(), m_port(25)
-            {
-                m_type = CONFIG_TYPE::SERVER;
-                auto domain = keyMap.find("domain");
-                if (domain != keyMap.end()) {
-                    m_domain = domain->second;
-                }
-                auto port = keyMap.find("port");
-                if (port != keyMap.end()) {
-                    m_port = std::stoi(port->second);
-                }
-            }
-
+        private:
             std::string m_domain;
             int m_port;
+            int m_server_count;
+            int m_order_number;
+            int m_process_count;
+        public:
+            ServerConfig()
+            : Config()
+            , m_port(25)
+            , m_server_count(0)
+            , m_order_number(0)
+            , m_process_count(0)
+            {
+                m_type = CONFIG_TYPE::SERVER;
+            }
+
+            explicit ServerConfig(const KeyMap &keyMap)
+                    : Config()
+                      , m_port(25)
+                      , m_server_count(0)
+                      , m_order_number(0)
+                      , m_process_count(0)
+            {
+                m_type = CONFIG_TYPE::SERVER;
+                auto it_domain = keyMap.find("domain");
+                m_domain = it_domain != keyMap.end() ? it_domain->second : "";
+
+                auto it_port = keyMap.find("port");
+                m_port = it_port != keyMap.end() ? std::stoi(it_port->second) : -1;
+
+                auto it_server_count = keyMap.find("server_count");
+                m_server_count = it_server_count != keyMap.end() ? std::stoi(it_server_count->second) : -1;
+
+                auto it_order_number = keyMap.find("order_number");
+                m_order_number = it_order_number != keyMap.end() ? std::stoi(it_order_number->second) : -1;
+
+                auto it_process_count = keyMap.find("process_count");
+                m_process_count = it_process_count != keyMap.end() ? std::stoi(it_process_count->second) : -1;
+            }
 
             bool is_valid() override
             {
-                // todo: add correctness validation
-                return m_port && !m_domain.empty();
+                return
+                        m_port != -1 &&
+                        m_server_count != -1 &&
+                        m_order_number != -1 &&
+                        m_process_count != -1 &&
+                        !m_domain.empty() &&
+                        m_order_number < m_server_count;
+            }
+
+            std::string get_domain() const
+            {
+                return m_domain;
+            }
+
+            int get_port() const
+            {
+                return m_port;
+            }
+
+            int get_server_count() const
+            {
+                return m_server_count;
+            }
+
+            int get_order_number() const
+            {
+                return m_order_number;
+            }
+
+            int get_process_count() const
+            {
+                return m_process_count;
             }
         };
 
@@ -153,8 +203,5 @@ namespace md
         void write_sys_log(const std::string &error_message);
 
         unsigned char *char2uchar(const char *in);
-
-
-
     }
 }

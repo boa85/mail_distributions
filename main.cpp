@@ -6,18 +6,16 @@
 #include "tools/args_parser/argument_parser.hpp"
 #include <chrono>
 #include <ctime>
+#include <boost/format.hpp>
 using namespace md::db;
 using namespace md::smtp;
 using namespace md::argument_parser;
 
 void send_mail(const StringList &list, const std::string &smtp_host, unsigned smtp_port)
 {
-    /*if (list.size() != 10) {
-        throw std::logic_error("invalid database record");
-    }*/
-
     try {
         SmtpServer mail;
+        mail.set_security_type(USE_TLS);
         mail.init(list, smtp_host, smtp_port);
         mail.send_mail();
     }
@@ -28,24 +26,55 @@ void send_mail(const StringList &list, const std::string &smtp_host, unsigned sm
 
 }
 
-void
-test_send_mail(const PgbPtr &pgBackend, const std::string &smtp_host, unsigned smtp_port)
+void test_send_mail(
+        const PGBackendPtr &pgBackend,
+        const std::string &smtp_host,
+        unsigned smtp_port,
+        int server_count,
+        int order_number,
+        int process_count)
 {
-    auto conn = pgBackend->connection();
+    auto connection = pgBackend->connection();
 
     std::string demo = "SELECT * FROM core.emails; ";
-    PQsendQuery(conn->connection().get(), demo.c_str());
+
+    std::string get_row_count = "SELECT count(*) FROM core.emails;";
+    int row_count = 0;
+    int begin = 0;
+    int end = 0;
+    int range = 0;
+    PQsendQuery(connection->connection().get(), get_row_count.c_str());
+
+    while (auto result = PQgetResult(connection->connection().get())) {
+//        PGRES_COMMAND_OK
+        if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result)) {
+            row_count = std::stoi(PQgetvalue(result, 0, 0));
+        }
+    }
+    if (row_count != 0 && server_count > 0) {
+        range = row_count / server_count;
+        begin = order_number * range;
+        end = begin + range;
+        if (end > row_count) {
+            end = row_count;
+        }
+    } else {
+        throw std::runtime_error("invalid arguments");
+    }
+    std::string query = (boost::format("SELECT * FROM core.emails WHERE id BETWEEN %d AND %d ORDER BY\n"
+                                       " id ASC;") % begin % end).str();
+    PQsendQuery(connection->connection().get(), query.c_str());
 
     StringListArray query_result;
 
-    while (auto result = PQgetResult(conn->connection().get())) {
+    while (auto result = PQgetResult(connection->connection().get())) {
         if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result)) {
             auto pq_tuples_count = PQntuples(result);
             auto pq_fields_count = PQnfields(result);
-            for (auto jdx = 0; jdx < pq_tuples_count; ++jdx) {
+            for (auto i = 0; i < pq_tuples_count; ++i) {
                 StringList list;
-                for (auto idx = 0; idx < pq_fields_count; ++idx) {
-                    auto item = PQgetvalue(result, jdx, idx);
+                for (auto j = 0; j < pq_fields_count; ++j) {
+                    auto item = PQgetvalue(result, i, j);
                     list.emplace_back(item);
                 }
                 send_mail(list, smtp_host, smtp_port);
@@ -54,6 +83,7 @@ test_send_mail(const PgbPtr &pgBackend, const std::string &smtp_host, unsigned s
         }
 
         if (PQresultStatus(result) == PGRES_FATAL_ERROR) {
+            write_sys_log(PQresultErrorMessage(result));
             std::cout << PQresultErrorMessage(result) << std::endl;
         }
 
@@ -64,7 +94,7 @@ test_send_mail(const PgbPtr &pgBackend, const std::string &smtp_host, unsigned s
         std::cout << list << std::endl;
     }
 
-    pgBackend->free_connection(conn);
+    pgBackend->free_connection(connection);
 
 }
 
@@ -72,71 +102,6 @@ test_send_mail(const PgbPtr &pgBackend, const std::string &smtp_host, unsigned s
 int main(int argc, char const *argv[])
 {
 
-    bool bError = false;
-
-    try
-    {
-        SmtpServer mail;
-
-#define test_gmail_tls
-
-#if defined(test_gmail_tls)
-        mail.init_smtp_server("smtp.yandex.ru", 587);
-        mail.set_security_type(USE_TLS);
-#elif defined(test_gmail_ssl)
-        mail.SetSMTPServer("smtp.gmail.com",465);
-		mail.SetSecurityType(USE_SSL);
-#elif defined(test_hotmail_TLS)
-		mail.SetSMTPServer("smtp.live.com",25);
-		mail.SetSecurityType(USE_TLS);
-#elif defined(test_aol_tls)
-		mail.SetSMTPServer("smtp.aol.com",587);
-		mail.SetSecurityType(USE_TLS);
-#elif defined(test_yahoo_ssl)
-		mail.SetSMTPServer("plus.smtp.mail.yahoo.com",465);
-		mail.SetSecurityType(USE_SSL);
-#endif
-
-
-        std::vector<std::string> v = {"test", "jan", "febr", "marz", "apr", "mai"};
-
-        std::chrono::time_point<std::chrono::system_clock> start, end;
-        start = std::chrono::system_clock::now();
-        for (auto i = 0; i < 1; ++i) {
-            mail.set_login("belaev.oa@yandex.ru");
-            mail.set_password("vusvifwyflgcxlvo");
-            mail.set_sender_name("User");
-            mail.set_sender_mail("belaev.oa@yandex.ru");
-            mail.set_reply_to("belaev.oa@yandex.ru");
-            mail.set_subject("The message");
-            mail.add_recipient("belaev.oa@yandex.ru");
-            mail.set_xpriority(XPRIORITY_NORMAL);
-            mail.set_xmailer("The Bat! (v3.02) Professional");
-            mail.add_message_line(v[i%6].c_str());
-            mail.add_message_line("I think this shit works.");
-
-            mail.add_message_line("User");
-            mail.send_mail();
-        }
-
-        end = std::chrono::system_clock::now();
-
-        int elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>
-                (end-start).count();
-        std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-
-        std::cout << "Вычисления закончены в " << std::ctime(&end_time)
-                  << "Время выполнения: " << elapsed_seconds << "s\n";
-    }
-    catch(SmtpException e)
-    {
-        std::cout << "Error: " << e.get_error_message().c_str() << ".\n";
-        bError = true;
-    }
-    if(!bError)
-        std::cout << "m_mail was send successfully.\n";
-    return 0;
-/*
     try {
         auto parser = std::make_shared<ArgumentParser>();
         parser->start_parsing(argc, argv);
@@ -148,12 +113,17 @@ int main(int argc, char const *argv[])
         auto server_conf = dynamic_cast<ServerConfig *>(read_config(path_to_server_conf, CONFIG_TYPE::SERVER,
                                                                     error_code).get());
 
-        auto smtp_host = server_conf->m_domain;
-        auto smtp_port = server_conf->m_port;
+        auto smtp_host = server_conf->get_domain();
+        auto smtp_port = server_conf->get_port();
+        auto server_count = server_conf->get_server_count();
+        auto order_number = server_conf->get_order_number();
+        auto process_count = server_conf->get_process_count();
         pg_backend->setup_connection(db_conf);
         std::vector<std::shared_ptr<std::thread>> vec;
         for (size_t i = 0; i < 1; ++i) {
-            vec.push_back(std::make_shared<std::thread>(std::thread(test_send_mail, pg_backend, smtp_host, smtp_port)));
+            vec.push_back(std::make_shared<std::thread>(
+                    std::thread(test_send_mail, pg_backend, smtp_host, smtp_port, server_count, order_number,
+                                process_count)));
         }
 
         for (auto &i : vec) {
@@ -161,19 +131,14 @@ int main(int argc, char const *argv[])
         }
         return 0;
     }
-   */
-/* catch (SmtpException &e) {
-        openlog("mail_distribution", LOG_PERROR | LOG_PID, LOG_USER);
-//        syslog(LOG_NOTICE, "error %s", e.get_error_message().c_str());
-        closelog();
-    }*//*
+    catch (SmtpException &e) {
+        write_sys_log(e.get_error_message());
+    }
 
     catch (std::exception &e) {
-        openlog("mail_distribution", LOG_PERROR | LOG_PID, LOG_USER);
-        syslog(LOG_NOTICE, "error %s", e.what());
-        closelog();
+        write_sys_log(e.what());
         std::cerr << e.what() << std::endl;
     }
-*/
+
 
 }

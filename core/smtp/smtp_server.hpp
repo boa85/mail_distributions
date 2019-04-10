@@ -69,7 +69,7 @@ namespace md
 
             void clear_message();
 
-            bool connect_remote_server(const char *szServer, unsigned short nPort_ = 0
+            bool connect_remote_server(const char *szServer, unsigned short port = 0
                                        , SMTP_SECURITY_TYPE securityType = DO_NOT_SET
                                        , bool authenticate = true
                                        , const char *login = nullptr
