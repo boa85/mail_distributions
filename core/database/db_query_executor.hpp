@@ -14,14 +14,13 @@ namespace md
             PGBackendPtr m_pg_backend_ptr;
         public:
             explicit DbQueryExecutor(ConfigPtr &db_config);
-            ~DbQueryExecutor();
 
             StringListArray get_data4send_mail(const DataRange &data_range);
 
             int get_row_count(const std::string &table_name);
 
         private:
-            void init(ConfigPtr &sharedPtr);
+            void init(ConfigPtr &db_config);
         };
 
     }

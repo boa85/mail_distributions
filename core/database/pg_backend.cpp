@@ -62,6 +62,12 @@ namespace md
             m_password = db_conf->m_password;
             m_port = db_conf->m_port;
         }
+
+        PGBackend::PGBackend(ConfigPtr &db_config)
+        {
+            setup_connection(db_config);
+            create_pool();
+        }
     }// namespace db
 }// namespace md
 

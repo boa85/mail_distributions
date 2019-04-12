@@ -14,14 +14,14 @@ namespace md
             init(db_config);
         }
 
-        void DbQueryExecutor::init(ConfigPtr &sharedPtr)
+        void DbQueryExecutor::init(ConfigPtr &db_config)
         {
             std::cout << "DbQueryExecutor::init1\n";
             if (!m_pg_backend_ptr) {
                 std::cout << "DbQueryExecutor::init2\n";
-                m_pg_backend_ptr = std::make_shared<PGBackend>();
+                m_pg_backend_ptr = std::make_shared<PGBackend>(db_config);
             }
-            m_pg_backend_ptr->setup_connection(sharedPtr);
+//            m_pg_backend_ptr->setup_connection(db_config);
         }
 
         StringListArray DbQueryExecutor::get_data4send_mail(const DataRange &data_range)

@@ -32,18 +32,6 @@ void send_mail(const StringList &list, const std::string &smtp_host, unsigned sm
     }
 }
 
-void do_child(DataRange range, std::string &smtp_host, unsigned smtp_port, ConfigPtr db_config)
-{
-    std::cout << "fork started\n";
-    DbQueryExecutor query_executor(db_config);
-    std::cout << "query executor inited\n";
-    auto mail_data = query_executor.get_data4send_mail(range);
-    std::cout << "mail data\n";
-    for (const auto& data:mail_data) {
-        send_mail(data, smtp_host, smtp_port);
-    }
-    std::cout << "fork started\n";
-}
 
 int main(int argc, char const *argv[])
 {
@@ -68,19 +56,18 @@ int main(int argc, char const *argv[])
         auto query_executor = std::make_shared<DbQueryExecutor>(db_conf);
         auto row_count = query_executor->get_row_count("core.emails");
         auto server_data_range = get_data_range(row_count, server_count, order_number);
+        auto mail_data = query_executor->get_data4send_mail(server_data_range);
+        /*for (const auto& data:mail_data) {
+            send_mail(data, smtp_host, smtp_port);
+        }*/
         auto process_row_count = abs(server_data_range.second - server_data_range.first);
         for (int process_idx = 0; process_idx < process_count; ++process_idx) {
             auto process_data_range = get_data_range(process_row_count, process_count, process_idx);
-            auto mail_data = query_executor->get_data4send_mail(process_data_range);
-            /*for (const auto& data:mail_data) {
+            auto mail_data2 = query_executor->get_data4send_mail(process_data_range);
+            for (const auto& data:mail_data2) {
                 send_mail(data, smtp_host, smtp_port);
-            }*/
-            pid_t pid = fork();
-            if (pid == 0) {
-                do_child(process_data_range, smtp_host, smtp_port, db_conf);
             }
         }
-
         return 0;
     }
     catch (SmtpException &e) {

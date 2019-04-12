@@ -98,6 +98,7 @@ namespace md
                     end = row_count;
                 }
                 ++begin;
+
             } else {
                 throw std::runtime_error("invalid arguments");
             }
