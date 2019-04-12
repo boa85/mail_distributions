@@ -14,7 +14,7 @@ namespace md
             PGBackendPtr m_pg_backend_ptr;
         public:
             explicit DbQueryExecutor(ConfigPtr &db_config);
-            ~DbQueryExecutor();
+
 
             StringListArray get_data4send_mail(const DataRange &data_range);
 
