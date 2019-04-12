@@ -85,5 +85,24 @@ namespace md
             return out;
         }
 
+        DataRange get_data_range(int row_count, int items_count, int order_number)
+        {
+            int begin = 0;
+            int end = 0;
+            int range = 0;
+            if (row_count != 0 && items_count > 0) {
+                range = row_count / items_count;
+                begin = abs(order_number - 1) * range;
+                end = begin + range;
+                if (end > row_count) {
+                    end = row_count;
+                }
+                ++begin;
+            } else {
+                throw std::runtime_error("invalid arguments");
+            }
+            return std::make_pair(begin, end);
+        }
+
     }
 }

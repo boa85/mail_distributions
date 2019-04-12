@@ -3,6 +3,7 @@
 #include "../../tools/service/service.hpp"
 #include "smtp_exception.hpp"
 #include "smtp_common.hpp"
+#include "smtp_statistic.hpp"
 
 
 #include <vector>
@@ -16,6 +17,9 @@ namespace md
     {
         class SmtpServer
         {
+        public:
+
+
             std::string m_local_hostname;
             std::string m_mail_from;
             std::string m_name_from;
@@ -51,6 +55,10 @@ namespace md
             SMTP_SECURITY_TYPE m_security_type;
             SSL_CTX *m_ctx;
             SSL *m_ssl;
+
+            // statistics
+
+            SmtpStatistic m_statistic;
 
         public:
             SmtpServer();
@@ -97,7 +105,7 @@ namespace md
 
             unsigned int get_gessage_line_count() const;
 
-            void send_mail();
+            bool send_mail();
 
             void set_charset(const char *charset);
 
@@ -135,6 +143,10 @@ namespace md
             bool m_bHTML;
 
             void init(const StringList &list, const std::string &smtp_hostname, unsigned int smtp_port);
+
+            void inc_send_failed_count();
+
+            void inc_send_success_count();
 
         private:
 

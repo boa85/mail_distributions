@@ -6,9 +6,10 @@
 
 namespace md
 {
+    using namespace service;
     namespace db
     {
-        using namespace service;
+
         class PGConnection
         {
         public:
@@ -54,9 +55,6 @@ namespace md
             {
                 return true;
             }
-        private:
-            void establish_connection();
-
 
         private:
             std::string m_host = "localhost";

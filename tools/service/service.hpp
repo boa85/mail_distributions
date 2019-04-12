@@ -203,5 +203,9 @@ namespace md
         void write_sys_log(const std::string &error_message);
 
         unsigned char *char2uchar(const char *in);
+
+        using DataRange = std::pair<int, int>;
+
+        DataRange get_data_range(int row_count, int items_count, int order_number);
     }
 }

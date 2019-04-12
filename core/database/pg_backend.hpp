@@ -19,11 +19,7 @@ namespace md
 
             std::shared_ptr<PGConnection> connection();
 
-            void free_connection(std::shared_ptr<PGConnection> connection);
-
-            void setup_connection(
-                    const std::string &host, const std::string &database_name, const std::string &username
-                    , const std::string &password, int port);
+            void free_connection(const std::shared_ptr<PGConnection>& connection);
 
             void setup_connection(ConfigPtr &ptr);
         private:
@@ -45,7 +41,6 @@ namespace md
 
         };
 
-        using PGBackendPtr = std::shared_ptr<PGBackend>;
     }// namespace db
 }// namespace md
 

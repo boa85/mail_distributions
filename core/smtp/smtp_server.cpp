@@ -2,11 +2,11 @@
 #include <zconf.h>
 #include <vector>
 #include "smtp_server.hpp"
-#include "../../tools/service/base_64.hpp"
+#include "base_64.hpp"
 #include "md_5.hpp"
 #include "openssl/err.h"
 #include <cassert>
-#include "../../tools/service/base_64.hpp"
+#include "base_64.hpp"
 #include "smtp_exception.hpp"
 
 using namespace md::smtp;
@@ -16,13 +16,19 @@ namespace md
     namespace smtp
     {
 ////////////////////////////////////////////////////////////////////////////////
-        SmtpServer::SmtpServer()
+        SmtpServer::SmtpServer() :
+                m_socket(INVALID_SOCKET)
+                , m_bConnected(false)
+                , m_xpriority(XPRIORITY_NORMAL)
+                , m_smtp_server_port(0)
+                , m_is_authenticate(true)
+                , m_security_type(NO_SECURITY)
+                , m_ctx(nullptr)
+                , m_ssl(nullptr)
+                , m_bHTML(false)
+                , m_is_read_receipt(true)
+                , m_charset("US-ASCII")
         {
-            m_socket = INVALID_SOCKET;
-            m_bConnected = false;
-            m_xpriority = XPRIORITY_NORMAL;
-            m_smtp_server_port = 0;
-            m_is_authenticate = true;
 
 
             char hostname[255];
@@ -38,19 +44,13 @@ namespace md
             if ((m_send_buffer = new char[BUFFER_SIZE]) == nullptr)
                 throw SmtpException(SmtpException::LACK_OF_MEMORY);
 
-            m_security_type = NO_SECURITY;
-            m_ctx = nullptr;
-            m_ssl = nullptr;
-            m_bHTML = false;
-            m_is_read_receipt = false;
-
-            m_charset = "US-ASCII";
         }
 
 ////////////////////////////////////////////////////////////////////////////////
         SmtpServer::~SmtpServer()
         {
-            if (m_bConnected) disconnect_remote_server();
+            if (m_bConnected)
+                disconnect_remote_server();
 
             if (m_send_buffer) {
                 delete[] m_send_buffer;
@@ -181,8 +181,9 @@ namespace md
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-        void SmtpServer::send_mail()
+        bool SmtpServer::send_mail()
         {
+            m_statistic.m_total_send_count++;// increment total count of sending messages
             unsigned int res;
             char *file_buffer = nullptr;
             FILE *hFile = nullptr;
@@ -214,9 +215,10 @@ namespace md
 
                 //Check that any attachments specified can be opened
                 total_size = 0;
-                for (auto file_id = 0; file_id < m_attachments.size(); file_id++) {
+                for (auto &m_attachment : m_attachments) {
+
                     // opening the file:
-                    hFile = fopen(m_attachments[file_id].c_str(), "rb");
+                    hFile = fopen(m_attachment.c_str(), "rb");
                     if (hFile == nullptr)
                         throw SmtpException(SmtpException::FILE_NOT_EXIST);
 
@@ -289,7 +291,7 @@ namespace md
 
                 // next goes attachments (if they are)
                 for (auto &attachment : m_attachments) {
-                    pos = attachment.find_last_of("/");
+                    pos = attachment.find_last_of('/');
                     fileName = pos == string::npos ? attachment : attachment.substr(pos + 1);
 
                     //RFC 2047 - Use UTF-8 charset,base64 encode.
@@ -355,6 +357,7 @@ namespace md
                 snprintf(m_send_buffer, BUFFER_SIZE, "\r\n.\r\n");
                 send_data(pEntry);
                 receive_response(pEntry);
+                return true;
             }
             catch (const SmtpException &) {
                 if (hFile)
@@ -1234,7 +1237,7 @@ namespace md
                 }
 
                 if (FD_ISSET(m_socket, &fdread) || (read_blocked_on_write && FD_ISSET(m_socket, &fdwrite))) {
-                    while (1) {
+                    while (true) {
                         read_blocked_on_write = 0;
 
                         const int buff_len = 1024;
@@ -1331,7 +1334,7 @@ namespace md
                     }
                 }
             }
-            snprintf(m_receive_buffer, BUFFER_SIZE, line.c_str());
+            snprintf(m_receive_buffer, BUFFER_SIZE, "%s", line.c_str());
             if (reply_code != pEntry->valid_reply_code) {
                 throw SmtpException(pEntry->error);
             }
@@ -1528,6 +1531,16 @@ namespace md
             set_xpriority(static_cast<SMTP_XPRIORITY>(std::stoi(list[8])));
             set_xmailer(list[9].c_str());
             add_message_line(list[10].c_str());
+        }
+
+        void SmtpServer::inc_send_failed_count()
+        {
+            m_statistic.m_failed_send_count++;
+        }
+
+        void SmtpServer::inc_send_success_count()
+        {
+            m_statistic.m_success_send_count++;
         }
     }//namespace smtp
 }//namespace md

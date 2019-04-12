@@ -33,11 +33,16 @@ set(SOURCE_FILES
         core/smtp/smtp_server.hpp
         tools/args_parser/argument_parser.cpp
         tools/args_parser/argument_parser.hpp
-        tools/service/base_64.cpp
-        tools/service/base_64.hpp
+        core/smtp/base_64.cpp
+        core/smtp/base_64.hpp
         tools/service/service.cpp
         tools/service/service.hpp
-        )
+        core/smtp/smtp_statistic.cpp
+        core/smtp/smtp_statistic.hpp
+        core/database/db_query_executor.cpp
+        core/database/db_query_executor.hpp
+        core/database/db_tools.cpp
+        core/database/db_tools.hpp)
 add_executable(mail_distributions ${SOURCE_FILES})
 target_link_libraries(mail_distributions
         ${Boost_LIBRARIES}
