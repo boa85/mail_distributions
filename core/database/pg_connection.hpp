@@ -13,7 +13,9 @@ namespace md
         class PGConnection
         {
         public:
-            PGConnection();
+//            PGConnection();
+
+            explicit PGConnection(const ConfigPtr &db_config);
 
             std::shared_ptr<PGconn> connection() const;
 
@@ -57,11 +59,17 @@ namespace md
             }
 
         private:
-            std::string m_host = "localhost";
+            /*username=maildistributionuser
+password=8dk76SF#Y
+db_name=maildistributiondb
+hostname=78.107.249.53
+port=5432
+*/
+            std::string m_host/* = "78.107.249.53"*/;
             int m_port = 5432;
-            std::string m_database_name = "mail_distribution";
-            std::string m_username = "postgres";
-            std::string m_password = "nfy.if";
+            std::string m_database_name/* = "maildistributiondb"*/;
+            std::string m_username/* = "maildistributionuser"*/;
+            std::string m_password/* = "8dk76SF#Y"*/;
             std::shared_ptr<PGconn> m_connection;
 
         };

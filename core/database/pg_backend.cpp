@@ -7,24 +7,18 @@ namespace md
     {
         PGBackend::PGBackend()
         {
-            create_pool();
+            create_pool(md::service::ConfigPtr());
         }
 
-        void PGBackend::create_pool()
+        void PGBackend::create_pool(const ConfigPtr& db_config)
         {
             std::lock_guard<std::mutex> locker(m_mutex);
             for (auto i = 0; i < POOL_COUNT; ++i) {
-                if(auto conn = std::make_shared<PGConnection>()) {
-                    conn->set_db_name(m_database_name);
-                    conn->set_host(m_host);
-                    conn->set_password(m_password);
-                    conn->set_port(m_port);
-                    conn->set_username(m_username);
-                    if (conn->is_valid()) {
-                        m_pool.push(conn);
-                    } else {
-                        throw std::runtime_error("can't setup connection");
-                    }
+                if(auto connection = std::make_shared<PGConnection>(db_config)) {
+                    std::cout << "connection created,  i = " << i << std::endl;
+                    m_pool.push(connection);
+                } else {
+                    throw std::runtime_error("can't create connection");
                 }
             }
         }
@@ -64,7 +58,7 @@ namespace md
         PGBackend::PGBackend(ConfigPtr &db_config)
         {
             setup_connection(db_config);
-            create_pool();
+            create_pool(db_config);
         }
 
         void PGBackend::print()

@@ -25,7 +25,7 @@ namespace md
 
             void setup_connection(ConfigPtr &ptr);
         private:
-            void create_pool();
+            void create_pool(const ConfigPtr& db_config);
 
             void print();
 
@@ -35,7 +35,7 @@ namespace md
 
             std::queue<std::shared_ptr<PGConnection>> m_pool;
 
-            const int POOL_COUNT = 20;
+            const int POOL_COUNT = 10;
         private:
             std::string m_host;
             int m_port = 5432;// default postgrtes port

@@ -59,7 +59,6 @@ int main(int argc, char const *argv[])
         auto server_count = server_conf->get_server_count();
         auto order_number = server_conf->get_order_number();
         auto process_count = server_conf->get_process_count();
-        auto pg_backend = std::make_shared<PGBackend>();
         global_query_executor = std::make_shared<DbQueryExecutor>(db_conf);
         auto row_count = global_query_executor->get_row_count("core.emails");
         auto server_data_range = get_data_range(row_count, server_count, order_number);
@@ -69,8 +68,14 @@ int main(int argc, char const *argv[])
         for (int process_idx = 1; process_idx <= process_count; ++process_idx) {
             auto process_data_range = get_data_range(process_row_count + 1, process_count, process_idx);
             pid_t pid = fork();
+            if (pid < 0) {
+                write_sys_log("can't to fork");
+                continue;
+            }
             if (pid == 0)
             {
+                do_child(process_data_range, smtp_host, smtp_port);
+            } else if (process_idx == 1) {
                 do_child(process_data_range, smtp_host, smtp_port);
             }
             sleep(5);
