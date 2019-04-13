@@ -43,7 +43,10 @@ namespace md
             }
         };
 
-        using StringListArray = std::vector<StringList>;
+        struct StringListArray : std::vector<StringList>
+        {
+            friend std::ostream &operator<<(std::ostream &os, const StringListArray &array);
+        };
 
         enum class CONFIG_TYPE : int
         {

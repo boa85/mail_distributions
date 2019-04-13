@@ -98,11 +98,19 @@ namespace md
                     end = row_count;
                 }
                 ++begin;
+
             } else {
                 throw std::runtime_error("invalid arguments");
             }
             return std::make_pair(begin, end);
         }
 
+        std::ostream &operator<<(std::ostream &os, const StringListArray &array)
+        {
+            for (const auto& list: array) {
+                os << list << std::endl;
+            }
+            return os;
+        }
     }
 }

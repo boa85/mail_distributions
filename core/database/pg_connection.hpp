@@ -57,11 +57,11 @@ namespace md
             }
 
         private:
-            std::string m_host = "localhost";
+            std::string m_host;
             int m_port = 5432;
-            std::string m_database_name = "mail_distribution";
-            std::string m_username = "postgres";
-            std::string m_password = "nfy.if";
+            std::string m_database_name;
+            std::string m_username;
+            std::string m_password;
             std::shared_ptr<PGconn> m_connection;
 
         };
