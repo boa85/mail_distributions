@@ -15,7 +15,6 @@ namespace md
         public:
             explicit DbQueryExecutor(ConfigPtr &db_config);
 
-
             StringListArray get_data4send_mail(const DataRange &data_range);
 
             int get_row_count(const std::string &table_name);
