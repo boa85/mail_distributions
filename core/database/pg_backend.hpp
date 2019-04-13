@@ -27,13 +27,15 @@ namespace md
         private:
             void create_pool();
 
+            void print();
+
             std::mutex m_mutex;
 
             std::condition_variable m_condition;
 
             std::queue<std::shared_ptr<PGConnection>> m_pool;
 
-            const int POOL_COUNT = 10;
+            const int POOL_COUNT = 20;
         private:
             std::string m_host;
             int m_port = 5432;// default postgrtes port

@@ -13,7 +13,7 @@
 using namespace md::db;
 using namespace md::smtp;
 using namespace md::argument_parser;
-
+std::shared_ptr<DbQueryExecutor> global_query_executor;
 void send_mail(const StringList &list, const std::string &smtp_host, unsigned smtp_port)
 {
     SmtpServer mail;
@@ -31,7 +31,14 @@ void send_mail(const StringList &list, const std::string &smtp_host, unsigned sm
         mail.inc_send_failed_count();
     }
 }
-
+void do_child(DataRange range, std::string &smtp_host, unsigned smtp_port)
+{
+    auto mail_data = global_query_executor->get_data4send_mail(range);
+    std::cout << mail_data;
+    for (const auto& data:mail_data) {
+        send_mail(data, smtp_host, smtp_port);
+    }
+}
 
 int main(int argc, char const *argv[])
 {
@@ -53,20 +60,21 @@ int main(int argc, char const *argv[])
         auto order_number = server_conf->get_order_number();
         auto process_count = server_conf->get_process_count();
         auto pg_backend = std::make_shared<PGBackend>();
-        auto query_executor = std::make_shared<DbQueryExecutor>(db_conf);
-        auto row_count = query_executor->get_row_count("core.emails");
+        global_query_executor = std::make_shared<DbQueryExecutor>(db_conf);
+        auto row_count = global_query_executor->get_row_count("core.emails");
         auto server_data_range = get_data_range(row_count, server_count, order_number);
-        auto mail_data = query_executor->get_data4send_mail(server_data_range);
-        /*for (const auto& data:mail_data) {
-            send_mail(data, smtp_host, smtp_port);
-        }*/
+        auto mail_data = global_query_executor->get_data4send_mail(server_data_range);
         auto process_row_count = abs(server_data_range.second - server_data_range.first);
-        for (int process_idx = 0; process_idx < process_count; ++process_idx) {
-            auto process_data_range = get_data_range(process_row_count, process_count, process_idx);
-            auto mail_data2 = query_executor->get_data4send_mail(process_data_range);
-            for (const auto& data:mail_data2) {
-                send_mail(data, smtp_host, smtp_port);
+
+        for (int process_idx = 1; process_idx <= process_count; ++process_idx) {
+            auto process_data_range = get_data_range(process_row_count + 1, process_count, process_idx);
+            pid_t pid = fork();
+            if (pid == 0)
+            {
+                do_child(process_data_range, smtp_host, smtp_port);
             }
+            sleep(5);
+
         }
         return 0;
     }
