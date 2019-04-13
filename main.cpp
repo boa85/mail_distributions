@@ -72,8 +72,7 @@ int main(int argc, char const *argv[])
                 write_sys_log("can't to fork");
                 continue;
             }
-            if (pid == 0)
-            {
+            if (pid == 0) {
                 do_child(process_data_range, smtp_host, smtp_port);
             } else if (process_idx == 1) {
                 do_child(process_data_range, smtp_host, smtp_port);

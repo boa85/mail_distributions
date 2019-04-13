@@ -59,17 +59,11 @@ namespace md
             }
 
         private:
-            /*username=maildistributionuser
-password=8dk76SF#Y
-db_name=maildistributiondb
-hostname=78.107.249.53
-port=5432
-*/
-            std::string m_host/* = "78.107.249.53"*/;
+            std::string m_host;
             int m_port = 5432;
-            std::string m_database_name/* = "maildistributiondb"*/;
-            std::string m_username/* = "maildistributionuser"*/;
-            std::string m_password/* = "8dk76SF#Y"*/;
+            std::string m_database_name;
+            std::string m_username;
+            std::string m_password;
             std::shared_ptr<PGconn> m_connection;
 
         };

@@ -20,7 +20,7 @@ namespace md
             int get_row_count(const std::string &table_name);
 
         private:
-            void init(ConfigPtr &db_config);
+            void init(ConfigPtr &sharedPtr);
         };
 
     }
