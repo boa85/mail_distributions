@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.1)
 project(mail_distributions)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "-O0 -pedantic-errors -Wextra -Wall -Winit-self -Wold-style-cast -Woverloaded-virtual -Wuninitialized -Wmissing-declarations -Wno-ignored-qualifiers -Wno-unused-parameter")
 find_package(OpenSSL REQUIRED)
 if (OPENSSL_FOUND)
@@ -10,7 +10,7 @@ else ()
     message(FATAL_ERROR "Could not find openssl!")
 endif ()
 
-find_package(Boost 1.58.0 COMPONENTS system filesystem program_options signals date_time thread regex serialization)
+find_package(Boost 1.53.0 COMPONENTS system filesystem program_options signals date_time thread regex serialization)
 if (NOT Boost_FOUND)
     message(FATAL_ERROR "Could not find boost!")
 endif ()
