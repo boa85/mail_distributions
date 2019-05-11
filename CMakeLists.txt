@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(mail_distributions)
 
-set(CMAKE_CXX_STANDARD 11)
+SET(CMAKE_CXX_FLAGS "-std=c++11 -O3")
 set(CMAKE_CXX_FLAGS "-O0 -pedantic-errors -Wextra -Wall -Winit-self -Wold-style-cast -Woverloaded-virtual -Wuninitialized -Wmissing-declarations -Wno-ignored-qualifiers -Wno-unused-parameter")
 find_package(OpenSSL REQUIRED)
 if (OPENSSL_FOUND)
