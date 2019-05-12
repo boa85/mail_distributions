@@ -56,13 +56,13 @@ int main(int argc, char const *argv[])
         write_sys_log("db config read success", LOG_DEBUG);
 
 
-
         global_query_executor = std::make_shared<DbQueryExecutor>(db_conf);
-        write_sys_log("db_query executor created", LOG_DEBUG);
+        std::cerr << "db_query executor created" << std::endl;
+
         auto row_count = global_query_executor->get_row_count("core.emails");
         auto server_conf = dynamic_cast<ServerConfig *>(read_config(path_to_server_conf, CONFIG_TYPE::SERVER,
-                                                                   error_code).get());
-        write_sys_log("srv config read success", LOG_DEBUG);
+                                                                 error_code).get());
+        std::cerr << "db_query executor created" << std::endl;
 
         auto smtp_host = server_conf->get_domain();
         auto smtp_port = server_conf->get_port();
