@@ -14,7 +14,7 @@ namespace md
         {
             std::lock_guard<std::mutex> locker(m_mutex);
             for (auto i = 0; i < POOL_COUNT; ++i) {
-                if(auto connection = std::make_shared<PGConnection>(db_config)) {
+                    if(auto connection = std::make_shared<PGConnection>(db_config)) {
                     std::cout << "connection created,  i = " << i << std::endl;
                     m_pool.push(connection);
                 } else {
