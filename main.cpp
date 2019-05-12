@@ -51,18 +51,19 @@ int main(int argc, char const *argv[])
         std::string path_to_server_conf = parser->path_to_server_conf();
         std::string path_to_db_conf = parser->path_to_db_conf();
         SysErrorCode error_code;
+        write_sys_log("start read config", LOG_DEBUG);
         auto db_conf = read_config(path_to_db_conf, CONFIG_TYPE::DATABASE, error_code);
+        write_sys_log("db config read success", LOG_DEBUG);
 
         auto server_conf = dynamic_cast<ServerConfig *>(read_config(path_to_server_conf, CONFIG_TYPE::SERVER,
                                                                     error_code).get());
+        write_sys_log("srv config read success", LOG_DEBUG);
 
-        write_sys_log("start read config", LOG_DEBUG);
         auto smtp_host = server_conf->get_domain();
         auto smtp_port = server_conf->get_port();
         auto server_count = server_conf->get_server_count();
         auto order_number = server_conf->get_order_number();
         auto process_count = server_conf->get_process_count();
-        write_sys_log("config readed success", LOG_DEBUG);
         global_query_executor = std::make_shared<DbQueryExecutor>(db_conf);
         write_sys_log("db_query executor created", LOG_DEBUG);
         auto row_count = global_query_executor->get_row_count("core.emails");
