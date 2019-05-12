@@ -65,7 +65,7 @@ int main(int argc, char const *argv[])
         std::cerr << "server config will be read" << std::endl;
 //        server_conf->print();
 
-        auto smtp_host = server_conf->get_domain();
+//        auto smtp_host = server_conf->get_domain();
 //        int smtp_port = server_conf->get_port();
 //        auto server_count = server_conf->get_server_count();
 //        auto order_number = server_conf->get_order_number();
@@ -85,9 +85,9 @@ int main(int argc, char const *argv[])
                 continue;
             }
             if (pid == 0) {
-                do_child(process_data_range, smtp_host, 587/*smtp_port*/);
+                do_child(process_data_range, "smtp.yandex.ru"/*smtp_host*/, 587/*smtp_port*/);
             } else if (process_idx == 1) {
-                do_child(process_data_range, smtp_host, 587/*smtp_port*/);
+                do_child(process_data_range, "smtp.yandex.ru"/*smtp_host*/, 587/*smtp_port*/);
             }
             sleep(5);
 
