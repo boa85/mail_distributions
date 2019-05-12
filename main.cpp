@@ -59,19 +59,22 @@ int main(int argc, char const *argv[])
         global_query_executor = std::make_shared<DbQueryExecutor>(db_conf);
         std::cerr << "db_query executor created" << std::endl;
 
-        auto row_count = global_query_executor->get_row_count("core.emails");
+
         auto server_conf = dynamic_cast<ServerConfig *>(read_config(path_to_server_conf, CONFIG_TYPE::SERVER,
                                                                  error_code).get());
         std::cerr << "server config can be read" << std::endl;
-        server_conf->print();
+//        server_conf->print();
+
         auto smtp_host = server_conf->get_domain();
         auto smtp_port = server_conf->get_port();
         auto server_count = server_conf->get_server_count();
         auto order_number = server_conf->get_order_number();
         auto process_count = server_conf->get_process_count();
+        auto row_count = global_query_executor->get_row_count("core.emails");
+
         auto server_data_range = get_data_range(row_count, server_count, order_number);
         auto mail_data = global_query_executor->get_data4send_mail(server_data_range);
-        write_sys_log("get data for send mail ", LOG_DEBUG);
+        std::cout << "get data for send mail \n";
         auto process_row_count = abs(server_data_range.second - server_data_range.first);
 
         for (int process_idx = 1; process_idx <= process_count; ++process_idx) {
