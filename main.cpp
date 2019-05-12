@@ -86,16 +86,16 @@ int main(int argc, char const *argv[])
 
         for (int process_idx = 1; process_idx <= process_count; ++process_idx) {
             auto process_data_range = get_data_range(process_row_count + 1, process_count, process_idx);
-            pid_t pid = fork();
-            if (pid < 0) {
-                write_sys_log("can't to fork", LOG_DEBUG);
-                continue;
-            }
-            if (pid == 0) {
+//            pid_t pid = fork();
+//            if (pid < 0) {
+//                write_sys_log("can't to fork", LOG_DEBUG);
+//                continue;
+//            }
+//            if (pid == 0) {
                 do_child(process_data_range, smtp_host, smtp_port);
-            } else if (process_idx == 1) {
-                do_child(process_data_range, smtp_host, smtp_port);
-            }
+//            } else if (process_idx == 1) {
+//                do_child(process_data_range, smtp_host, smtp_port);
+//            }
             sleep(5);
 
         }

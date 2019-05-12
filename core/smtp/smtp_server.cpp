@@ -336,13 +336,13 @@ namespace md
                             msg_part = 0;
                             send_data(pEntry); // file_buffer, fileName, fclose(hFile);
                         }
-                    }
+                    }// for file_size
                     if (msg_part) {
                         send_data(pEntry); // file_buffer, fileName, fclose(hFile);
                     }
                     fclose(hFile);
                     hFile = nullptr;
-                }
+                }// for attachments
                 delete[] file_buffer;
                 file_buffer = nullptr;
 
