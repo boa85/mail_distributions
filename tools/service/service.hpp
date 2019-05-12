@@ -64,6 +64,7 @@ namespace md
             {}
 
             virtual bool is_valid() = 0;
+            virtual void print() = 0;
         };
 
         struct DbConfig : Config
@@ -107,6 +108,12 @@ namespace md
                 SysErrorCode error_code;
                 return !m_username.empty() && !m_password.empty() && !m_database_name.empty() &&
                        is_valid_ip(m_hostname, error_code);
+            }
+
+            void print() override
+            {
+                std::cout << "\nusername: " << m_username << "\npassword: " << m_password << "\ndatabase: "
+                          << m_database_name << "\nhost: " << m_hostname << "\nport: " << m_port;
             }
 
             std::string m_username;
@@ -171,6 +178,11 @@ namespace md
                         m_order_number < m_server_count;
             }
 
+            void print() override
+            {
+                std::cout << "\ndomain: " << m_domain << "\nserver count: " << m_server_count << "\norder number: "
+                          << m_order_number << "\nprocess: " << m_process_count << "\nport: " << m_port;
+            }
             std::string get_domain() const
             {
                 return m_domain;

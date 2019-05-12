@@ -65,6 +65,7 @@ int main(int argc, char const *argv[])
         std::cerr << "db_query executor created" << std::endl;
 
         auto smtp_host = server_conf->get_domain();
+        server_conf->print();
         auto smtp_port = server_conf->get_port();
         auto server_count = server_conf->get_server_count();
         auto order_number = server_conf->get_order_number();
