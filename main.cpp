@@ -62,10 +62,9 @@ int main(int argc, char const *argv[])
         auto row_count = global_query_executor->get_row_count("core.emails");
         auto server_conf = dynamic_cast<ServerConfig *>(read_config(path_to_server_conf, CONFIG_TYPE::SERVER,
                                                                  error_code).get());
-        std::cerr << "db_query executor created" << std::endl;
-
-        auto smtp_host = server_conf->get_domain();
+        std::cerr << "server config can be read" << std::endl;
         server_conf->print();
+        auto smtp_host = server_conf->get_domain();
         auto smtp_port = server_conf->get_port();
         auto server_count = server_conf->get_server_count();
         auto order_number = server_conf->get_order_number();

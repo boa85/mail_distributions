@@ -15,7 +15,7 @@ if (NOT Boost_FOUND)
 endif ()
 find_package(PostgreSQL REQUIRED)
 include_directories(${BOOST_INCLUDE_DIRS}  ${PostgreSQL_INCLUDE_DIRS} )
-SET(CMAKE_CXX_FLAGS -pthread)
+#SET(CMAKE_CXX_FLAGS -pthread)
 set(SOURCE_FILES
         main.cpp
         core/database/pg_backend.cpp
