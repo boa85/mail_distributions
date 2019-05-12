@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <boost/filesystem.hpp>
+#include <syslog.h>
 #include <boost/signals2.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
@@ -203,7 +204,7 @@ namespace md
 
         ConfigPtr read_config(const std::string &filename, CONFIG_TYPE config_type, SysErrorCode &error_code);
 
-        void write_sys_log(const std::string &error_message);
+        void write_sys_log(const std::string &error_message, int log_level  = LOG_PERROR);
 
         unsigned char *char2uchar(const char *in);
 

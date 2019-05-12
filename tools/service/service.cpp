@@ -65,9 +65,9 @@ namespace md
             }
         }
 
-        void write_sys_log(const std::string &error_message)
+        void write_sys_log(const std::string &error_message, int log_level)
         {
-            openlog("mail_distribution", LOG_PERROR | LOG_PID, LOG_USER);
+            openlog("mail_distribution", log_level | LOG_PID, LOG_USER);
             syslog(LOG_NOTICE, "error %s", error_message.c_str());
             closelog();
         }
