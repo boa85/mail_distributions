@@ -35,7 +35,8 @@ void do_child(DataRange range, std::string &smtp_host, unsigned smtp_port)
 {
     auto mail_data = global_query_executor->get_data4send_mail(range);
     std::cout << mail_data;
-    for (const auto& data:mail_data) {
+    for (const auto &data:mail_data) {
+
         send_mail(data, smtp_host, smtp_port);
     }
 }
@@ -44,6 +45,7 @@ int main(int argc, char const *argv[])
 {
 
     try {
+
         auto parser = std::make_shared<ArgumentParser>();
         parser->start_parsing(argc, argv);
         std::string path_to_server_conf = parser->path_to_server_conf();
@@ -54,22 +56,26 @@ int main(int argc, char const *argv[])
         auto server_conf = dynamic_cast<ServerConfig *>(read_config(path_to_server_conf, CONFIG_TYPE::SERVER,
                                                                     error_code).get());
 
+        write_sys_log("start read config", LOG_DEBUG);
         auto smtp_host = server_conf->get_domain();
         auto smtp_port = server_conf->get_port();
         auto server_count = server_conf->get_server_count();
         auto order_number = server_conf->get_order_number();
         auto process_count = server_conf->get_process_count();
+        write_sys_log("config readed success", LOG_DEBUG);
         global_query_executor = std::make_shared<DbQueryExecutor>(db_conf);
+        write_sys_log("db_query executor created", LOG_DEBUG);
         auto row_count = global_query_executor->get_row_count("core.emails");
         auto server_data_range = get_data_range(row_count, server_count, order_number);
         auto mail_data = global_query_executor->get_data4send_mail(server_data_range);
+        write_sys_log("get data for send mail ", LOG_DEBUG);
         auto process_row_count = abs(server_data_range.second - server_data_range.first);
 
         for (int process_idx = 1; process_idx <= process_count; ++process_idx) {
             auto process_data_range = get_data_range(process_row_count + 1, process_count, process_idx);
             pid_t pid = fork();
             if (pid < 0) {
-                write_sys_log("can't to fork");
+                write_sys_log("can't to fork", LOG_DEBUG);
                 continue;
             }
             if (pid == 0) {
