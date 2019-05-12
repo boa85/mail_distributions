@@ -60,17 +60,23 @@ int main(int argc, char const *argv[])
         std::cerr << "db_query executor created" << std::endl;
 
 
-        auto server_conf = dynamic_cast<ServerConfig *>(read_config(path_to_server_conf, CONFIG_TYPE::SERVER,
-                                                                 error_code).get());
+        auto p_server_conf = read_config(path_to_server_conf, CONFIG_TYPE::SERVER, error_code);
+        if (!p_server_conf) {
+            return -1;
+        }
+        auto server_conf = dynamic_cast<ServerConfig *>(p_server_conf.get());
+        if (!server_conf) {
+            return -1;
+        }
         std::cerr << "server config will be read" << std::endl;
 //        server_conf->print();
 
-        std::string smtp_host = "smtp.yandex.ru"/*server_conf->get_domain()*/;
+        std::string smtp_host = /*"smtp.yandex.ru"*/server_conf->get_domain();
 
-        int smtp_port = 587/*server_conf->get_port()*/;
-        int server_count = 1/*server_conf->get_server_count()*/;
-        int order_number = 1/*server_conf->get_order_number()*/;
-        auto process_count = 1/*server_conf->get_process_count()*/;
+        int smtp_port = /*587*/server_conf->get_port();
+        int server_count = /*1*/server_conf->get_server_count();
+        int order_number = /*1*/server_conf->get_order_number();
+        auto process_count = /*1*/server_conf->get_process_count();
         auto row_count = global_query_executor->get_row_count("core.emails");
 
         auto server_data_range = get_data_range(row_count, server_count, order_number);
