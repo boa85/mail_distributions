@@ -803,7 +803,10 @@ namespace md
 ////////////////////////////////////////////////////////////////////////////////
         void SmtpServer::disconnect_remote_server()
         {
-            if (m_bConnected) say_quit();
+            if (m_bConnected) {
+                say_quit();
+            }
+
             if (m_socket) {
                 close(m_socket);
             }
@@ -1300,7 +1303,7 @@ namespace md
             while (!bFinish) {
                 receive_data(pEntry);
                 line.append(m_receive_buffer);
-                size_t len = line.length();
+                size_t len = line.length();// todo: здесь будет учет отправленных писем и открытых
                 size_t begin = 0;
                 size_t offset = 0;
 
