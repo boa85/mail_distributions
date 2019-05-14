@@ -51,7 +51,6 @@ void do_child(DataRange range, std::string &smtp_host, unsigned smtp_port)
     auto mail_data = global_query_executor->get_data4send_mail(range);
     std::cout << mail_data;
     for (const auto &data:mail_data) {
-
         send_mail(data, smtp_host, smtp_port);
     }
 }
