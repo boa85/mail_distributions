@@ -25,25 +25,25 @@ using namespace md::db;
 using namespace md::smtp;
 using namespace md::argument_parser;
 std::shared_ptr<DbQueryExecutor> global_query_executor;
-void send_mail(const StringList &list, const std::string &smtp_host, unsigned smtp_port)
+void send_mail(const StringList &mail_data, const std::string &smtp_host, unsigned smtp_port)
 {
-    SmtpServer mail;
+    SmtpServer smtp_server;
     try {
 
-        mail.set_security_type(USE_TLS);
-        mail.init(list, smtp_host, smtp_port);
-        if(mail.send_mail())
-            mail.inc_send_success_count();
+        smtp_server.set_security_type(USE_TLS);
+        smtp_server.init(mail_data, smtp_host, smtp_port);
+        if(smtp_server.send_mail())
+            smtp_server.inc_send_success_count();
 
     }
     catch (SmtpException &e) {
         write_sys_log(e.get_error_message());
         std::cout << "Error: " << e.get_error_message().c_str() << ".\n";
-        mail.inc_send_failed_count();
+        smtp_server.inc_send_failed_count();
     }
     catch (...) {
         std::cout << "Error: unknown error" << ".\n";
-        mail.inc_send_failed_count();
+        smtp_server.inc_send_failed_count();
     }
 }
 void do_child(DataRange range, std::string &smtp_host, unsigned smtp_port)
