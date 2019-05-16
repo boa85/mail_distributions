@@ -17,6 +17,12 @@ namespace md
 
             StringListArray get_data4send_mail(const DataRange &data_range);
 
+            StringListArray get_data4send_mail(
+                    const DataRange &data_range
+                    , const std::string &login
+                    , const std::string &password
+                    , const std::string &sender_mail);
+
             int get_row_count(const std::string &table_name);
 
         private:
